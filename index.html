@@ -312,9 +312,9 @@ tbody tr:hover td.nc{background:var(--surface2);}
   <div class="auth-wrap">
     <span class="auth-icon">🏢</span>
     <div class="auth-title">Workspace Planner</div>
-    <div class="auth-sub">Sign in to continue</div>
-    <label class="auth-label">Email</label>
-    <input class="auth-input" type="email" id="aEmail" placeholder="you@qiddiya.com" autocomplete="email">
+    <div class="auth-sub">Sign in with your username and password</div>
+    <label class="auth-label">Username</label>
+    <input class="auth-input" type="email" id="aEmail" placeholder="e.g. ahmed@workspace.local" autocomplete="email">
     <label class="auth-label">Password</label>
     <input class="auth-input" type="password" id="aPass" placeholder="••••••••" autocomplete="current-password">
     <div class="auth-forgot" id="aForgot">Forgot password?</div>
@@ -1520,7 +1520,7 @@ document.getElementById('btnSignIn').addEventListener('click',async()=>{
   err.textContent='';err.style.color='var(--red)';
   if(!email||!pass){err.textContent='Please enter your email and password.';return;}
   const btn=document.getElementById('btnSignIn');btn.disabled=true;btn.textContent='Signing in…';
-  const{error}=await db.auth.signInWithPassword({email,pass});
+  const{error}=await db.auth.signInWithPassword({email,password:pass});
   btn.disabled=false;btn.textContent='Sign in';
   if(error)err.textContent=error.message;
 });
