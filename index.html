@@ -320,6 +320,9 @@ tbody tr:hover td.nc{background:var(--surface2);}
     <div class="auth-forgot" id="aForgot">Forgot password?</div>
     <button class="auth-btn" id="btnSignIn">Sign in</button>
     <div class="auth-err" id="aErr"></div>
+    <div style="text-align:center;margin-top:2rem;padding-top:1.25rem;border-top:1px solid var(--border);font-size:11px;color:var(--text3)">
+      Made by <span style="font-weight:600;color:var(--text2)">Ahmed Abahussain</span>
+    </div>
   </div>
 </div>
 
@@ -361,6 +364,7 @@ tbody tr:hover td.nc{background:var(--surface2);}
       <div id="schedControls" style="display:flex;align-items:center;gap:8px">
         <button class="btn icon" id="btnPrev">&#8249;</button>
         <span class="period-label" id="elPeriod" style="font-size:13px;font-weight:600;min-width:190px;text-align:center">—</span>
+        <span id="weekStatusBadge" style="font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;display:none"></span>
         <button class="btn icon" id="btnNext">&#8250;</button>
         <div class="vtog">
           <button class="on" id="btnWeek">Week</button>
@@ -368,6 +372,7 @@ tbody tr:hover td.nc{background:var(--surface2);}
         </div>
         <button class="btn amber" id="btnReshuffle" title="Auto-assign based on targets">🔀 Reshuffle</button>
         <button class="btn pri" id="btnExport">↓ Excel</button>
+        <button class="btn sec" id="btnPublishWeek" title="Lock this week so reshuffle can't change it">📌 Publish week</button>
       </div>
 
       <div style="width:1px;height:28px;background:var(--border);margin:0 4px"></div>
@@ -454,14 +459,18 @@ tbody tr:hover td.nc{background:var(--surface2);}
   <div class="page" id="pageDashboard">
     <div class="page-body">
       <div class="dash-filter-bar">
-        <label>Time range:</label>
+        <div style="display:flex;gap:2px;border:1px solid var(--border2);border-radius:var(--r);overflow:hidden;margin-right:8px">
+          <button class="btn on" id="dashTabAnalytics" style="border:none;border-radius:0;padding:6px 14px;font-size:13px">📊 Analytics</button>
+          <button class="btn" id="dashTabHistory" style="border:none;border-radius:0;padding:6px 14px;font-size:13px">📋 History</button>
+        </div>
+        <label id="dashRangeLabel">Time range:</label>
         <select id="dashRange">
           <option value="4">Last 4 weeks</option>
           <option value="8" selected>Last 8 weeks</option>
           <option value="12">Last 12 weeks</option>
           <option value="26">Last 6 months</option>
         </select>
-        <label style="margin-left:12px">Group:</label>
+        <label style="margin-left:12px" id="dashGroupLabel">Group:</label>
         <select id="dashGroup"><option value="">All groups</option></select>
         <button class="btn sec" id="btnDashRefresh" style="margin-left:auto">↻ Refresh</button>
       </div>
@@ -544,6 +553,11 @@ tbody tr:hover td.nc{background:var(--surface2);}
     </div>
   </div>
 
+<!-- APP FOOTER -->
+<div style="border-top:1px solid var(--border);padding:16px 2rem;display:flex;align-items:center;justify-content:center;background:var(--surface);margin-top:2rem;">
+  <span style="font-size:11px;color:var(--text3)">Workspace Planner &nbsp;·&nbsp; Made by <span style="font-weight:600;color:var(--text2)">Ahmed Abahussain</span></span>
+</div>
+
 </div><!-- /app -->
 
 <div id="elModal"></div>
@@ -571,6 +585,7 @@ const PAL=['#6DBE5C','#5AA8E6','#F0A030','#D85080','#5DC8A8','#8070D8','#E87050'
    STATE
 ═══════════════════════════════════════════════════ */
 let G=[],S=[],seats=7,collapsed={};
+let weekPlanCache={}; /* weekStartKey -> {status, published_at, published_by} */
 let theme=localStorage.getItem('wsp_theme')||'light';
 let view=localStorage.getItem('wsp_view')||'week';
 let navDate=today(),user=null,role='viewer',canEdit=false;
@@ -607,15 +622,17 @@ function sync(state,msg){
 async function loadAll(){
   sync('syncing','Loading...');
   try{
-    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD}]=await Promise.all([
+    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD},{data:wpD}]=await Promise.all([
       db.from('groups').select('*').order('sort_order'),
       db.from('staff').select('*').order('sort_order'),
       db.from('rotation_debt').select('*'),
       db.from('app_settings').select('*'),
+      db.from('week_plans').select('*'),
     ]);
     if(gE)throw gE; if(sE)throw sE;
     G=gD||[]; S=sD||[];
     rotDebt={};(dD||[]).forEach(r=>{rotDebt[r.staff_id]=r.debt;});
+    weekPlanCache={};(wpD||[]).forEach(r=>{weekPlanCache[r.week_start]=r;});
     (stD||[]).forEach(r=>{
       if(r.key==='seats'){
         seats=parseInt(r.value)||7;
@@ -691,10 +708,84 @@ async function toggleLock(sid,dstr){
 }
 
 /* ═══════════════════════════════════════════════════
+   WEEK PLAN HELPERS
+═══════════════════════════════════════════════════ */
+function getWeekStartKey(date){
+  /* Always Sunday of the week containing date */
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate()-date.getDay());
+  return dk(d);
+}
+function getCurrentWeekStart(){
+  return getWeekStartKey(navDate);
+}
+function isWeekPublished(weekStartKey){
+  const plan=weekPlanCache[weekStartKey];
+  return plan&&plan.status==='published';
+}
+function updateWeekStatusBadge(){
+  const badge=document.getElementById('weekStatusBadge');
+  if(!badge)return;
+  const wsKey=getCurrentWeekStart();
+  const plan=weekPlanCache[wsKey];
+  if(plan&&plan.status==='published'){
+    badge.textContent='🔒 Published';
+    badge.style.cssText='font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;display:inline;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-bd)';
+    document.getElementById('btnPublishWeek').textContent='🔓 Unpublish week';
+    document.getElementById('btnPublishWeek').classList.add('dng');
+    document.getElementById('btnPublishWeek').classList.remove('sec');
+  }else{
+    badge.textContent='✏️ Draft';
+    badge.style.cssText='font-size:11px;padding:3px 9px;border-radius:20px;font-weight:500;display:inline;background:var(--surface2);color:var(--text2);border:1px solid var(--border)';
+    document.getElementById('btnPublishWeek').textContent='📌 Publish week';
+    document.getElementById('btnPublishWeek').classList.remove('dng');
+    document.getElementById('btnPublishWeek').classList.add('sec');
+  }
+  /* Hide publish button for viewers */
+  document.getElementById('btnPublishWeek').style.display=canEdit?'':'none';
+}
+
+async function togglePublishWeek(){
+  if(!canEdit)return;
+  const wsKey=getCurrentWeekStart();
+  const isPublished=isWeekPublished(wsKey);
+
+  if(isPublished){
+    /* Unpublish */
+    if(!window.confirm('Unpublish this week?\n\nThis will allow the schedule to be edited and reshuffled again.'))return;
+    sync('syncing','Unpublishing...');
+    const{error}=await db.from('week_plans').update({status:'draft',published_by:null,published_at:null}).eq('week_start',wsKey);
+    if(error){sync('err','Failed: '+error.message);return;}
+    weekPlanCache[wsKey]={...weekPlanCache[wsKey],status:'draft'};
+    sync('ok','Week unpublished — schedule is editable again');
+  }else{
+    /* Publish */
+    if(!window.confirm('Publish this week?\n\nThe schedule will be locked and reshuffle will skip it.\nYou can unpublish it later if needed.'))return;
+    sync('syncing','Publishing...');
+    const{error}=await db.from('week_plans').upsert({
+      week_start:wsKey,
+      status:'published',
+      published_by:user.id,
+      published_at:new Date().toISOString()
+    },{onConflict:'week_start'});
+    if(error){sync('err','Failed: '+error.message);return;}
+    weekPlanCache[wsKey]={week_start:wsKey,status:'published',published_at:new Date().toISOString(),published_by:user.id};
+    sync('ok','Week published 🔒 — reshuffle will not touch this week');
+  }
+  updateWeekStatusBadge();
+  renderAll();
+}
+
+/* ═══════════════════════════════════════════════════
    RESHUFFLE
 ═══════════════════════════════════════════════════ */
 async function reshuffle(){
   if(!canEdit)return;
+  /* Check if current week is published */
+  const wsKey=getCurrentWeekStart();
+  if(isWeekPublished(wsKey)){
+    window.alert('This week is published 🔒\n\nUnpublish it first if you want to make changes.');
+    return;
+  }
   const days=getDays().filter(d=>!isWE(d)),cap=seats;
   sync('syncing','Reshuffling...');
   S.forEach(m=>{if(rotDebt[m.id]==null)rotDebt[m.id]=0;});
@@ -741,6 +832,7 @@ function renderAll(){
   document.getElementById('elPeriod').textContent=periodStr();
   document.getElementById('btnWeek').classList.toggle('on',view==='week');
   document.getElementById('btnMonth').classList.toggle('on',view==='month');
+  updateWeekStatusBadge();
   renderKPIs();renderHeatmap();renderSchedule();
 }
 
@@ -938,6 +1030,122 @@ async function removeUser(uid){
 /* ═══════════════════════════════════════════════════
    DASHBOARD
 ═══════════════════════════════════════════════════ */
+let dashTab='analytics';
+
+function switchDashTab(tab){
+  dashTab=tab;
+  const isAna=tab==='analytics';
+  document.getElementById('dashTabAnalytics').classList.toggle('on',isAna);
+  document.getElementById('dashTabHistory').classList.toggle('on',!isAna);
+  document.getElementById('dashRangeLabel').style.display=isAna?'':'none';
+  document.getElementById('dashRange').style.display=isAna?'':'none';
+  document.getElementById('dashGroupLabel').style.display=isAna?'':'none';
+  document.getElementById('dashGroup').style.display=isAna?'':'none';
+  if(isAna)loadDashboard();else loadHistory();
+}
+
+async function loadHistory(){
+  document.getElementById('dashContent').innerHTML='<div class="dash-empty"><div class="spinner" style="margin:0 auto 16px"></div>Loading history...</div>';
+  /* Load all week plans */
+  const{data:plans,error}=await db.from('week_plans').select('*').order('week_start',{ascending:false}).limit(52);
+  if(error){document.getElementById('dashContent').innerHTML='<div class="dash-empty">Failed to load history.</div>';return;}
+  if(!plans||!plans.length){
+    document.getElementById('dashContent').innerHTML=`<div class="dash-empty" style="padding:60px">
+      <div style="font-size:32px;margin-bottom:12px">📋</div>
+      <div style="font-weight:500;margin-bottom:6px">No published weeks yet</div>
+      <div style="font-size:13px;color:var(--text3)">Use the <strong>📌 Publish week</strong> button on the Schedule page to lock and archive a week.</div>
+    </div>`;
+    return;
+  }
+
+  /* For each published week, load the schedule */
+  const weekRows=await Promise.all(plans.map(async(plan)=>{
+    const ws=new Date(plan.week_start+'T00:00:00');
+    const we=new Date(ws);we.setDate(ws.getDate()+4);
+    const{data:entries}=await db.from('schedule_entries')
+      .select('staff_id,entry_date,status')
+      .gte('entry_date',plan.week_start)
+      .lte('entry_date',dk(we));
+    const entryMap={};
+    (entries||[]).forEach(r=>{entryMap[r.staff_id+'__'+r.entry_date]=r.status;});
+    const days=['Sun','Mon','Tue','Wed','Thu'];
+    const offCount={};
+    days.forEach((_,i)=>{
+      const d=new Date(ws);d.setDate(ws.getDate()+i);
+      offCount[days[i]]=S.filter(m=>{
+        const pat=(m.pattern||{})[d.getDay()]||null;
+        const ov=entryMap[m.id+'__'+dk(d)];
+        return(ov||pat)==='office';
+      }).length;
+    });
+    const isPublished=plan.status==='published';
+    const pubDate=plan.published_at?new Date(plan.published_at).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):'—';
+    return{plan,ws,offCount,days,isPublished,pubDate,entryMap};
+  }));
+
+  const html=`
+    <div style="margin-bottom:8px;font-size:12px;color:var(--text2)">
+      ${plans.length} week${plans.length!==1?'s':''} in history
+      &nbsp;·&nbsp; <span style="color:var(--green-t)">🔒 Published</span> weeks are locked
+      &nbsp;·&nbsp; <span style="color:var(--text3)">✏️ Draft</span> weeks are still editable
+    </div>
+    ${weekRows.map(({plan,ws,offCount,days,isPublished,pubDate,entryMap})=>{
+      const label=ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+
+        new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+4).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const statusBadge=isPublished
+        ?'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-bd);font-weight:500">🔒 Published</span>'
+        :'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);font-weight:500">✏️ Draft</span>';
+      const dayCols=days.map((d,i)=>`
+        <td style="text-align:center;padding:10px 8px">
+          <div style="font-size:10px;color:var(--text2);margin-bottom:3px">${d}</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${offCount[d]>=seats?'var(--red)':offCount[d]>=seats*.8?'var(--warn)':'var(--green-t)'}">${offCount[d]}</div>
+          <div style="font-size:9px;color:var(--text3)">/${seats}</div>
+        </td>`).join('');
+      return`<div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+          <div style="font-weight:600;font-size:14px">${label}</div>
+          ${statusBadge}
+          ${isPublished?`<div style="font-size:11px;color:var(--text3);margin-left:auto">Published ${pubDate}</div>`:''}
+        </div>
+        <div class="table-scroll">
+          <table style="font-size:12px;width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:var(--surface2)">
+                <th style="text-align:left;padding:8px 12px;font-weight:500;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)">Staff</th>
+                ${days.map(d=>`<th style="text-align:center;padding:8px;font-weight:500;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)">${d}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${S.map(m=>{
+                const pat=m.pattern||{};
+                const dayCells=days.map((_,i)=>{
+                  const d=new Date(ws);d.setDate(ws.getDate()+i);
+                  const ov=entryMap[m.id+'__'+dk(d)];
+                  const st=ov||(pat[d.getDay()]||null);
+                  const colors={office:'var(--green-bg)',remote:'var(--blue-bg)',leave:'var(--gray-bg)',other:'var(--amber-bg)'};
+                  const textColors={office:'var(--green-t)',remote:'var(--blue-t)',leave:'var(--gray-t)',other:'var(--amber-t)'};
+                  const label={office:'OFF',remote:'REM',leave:'LVE',other:'OTH'};
+                  return`<td style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--border)">
+                    ${st?`<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;background:${colors[st]};color:${textColors[st]}">${label[st]}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}
+                  </td>`;
+                }).join('');
+                return`<tr style="border-bottom:1px solid var(--border)">
+                  <td style="padding:7px 12px;font-weight:500;border-bottom:1px solid var(--border)">${esc(m.name)} <span style="font-size:10px;color:var(--text2);font-weight:400">${esc(m.role||'')}</span></td>
+                  ${dayCells}
+                </tr>`;
+              }).join('')}
+              <tr style="background:var(--surface2)">
+                <td style="padding:8px 12px;font-size:11px;color:var(--text2);font-weight:600">In office</td>
+                ${days.map(d=>`<td style="text-align:center;padding:8px;font-weight:700;font-size:12px;font-family:'DM Mono',monospace;color:${offCount[d]>=seats?'var(--red)':'var(--green-t)'}">${offCount[d]}/${seats}</td>`).join('')}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('')}`;
+
+  document.getElementById('dashContent').innerHTML=html;
+}
 function populateDashGroups(){
   const sel=document.getElementById('dashGroup');
   sel.innerHTML='<option value="">All groups</option>'+G.map(g=>`<option value="${g.id}">${esc(g.name)}</option>`).join('');
@@ -1101,7 +1309,7 @@ function switchPage(page){
   document.getElementById('page'+page.charAt(0).toUpperCase()+page.slice(1))?.classList.add('active');
   const isSched=page==='schedule';
   document.getElementById('schedControls').style.display=isSched?'flex':'none';
-  if(page==='dashboard')loadDashboard();
+  if(page==='dashboard'){ dashTab='analytics'; switchDashTab('analytics'); }
   if(page==='settings')loadUserTable();
 }
 
@@ -1362,9 +1570,12 @@ document.getElementById('btnWeek').addEventListener('click',async()=>{view='week
 document.getElementById('btnMonth').addEventListener('click',async()=>{view='month';localStorage.setItem('wsp_view',view);await loadEntries();renderAll();});
 document.getElementById('btnReshuffle').addEventListener('click',reshuffle);
 document.getElementById('btnExport').addEventListener('click',exportExcel);
-document.getElementById('btnDashRefresh').addEventListener('click',loadDashboard);
-document.getElementById('dashRange').addEventListener('change',loadDashboard);
-document.getElementById('dashGroup').addEventListener('change',loadDashboard);
+document.getElementById('btnPublishWeek').addEventListener('click',togglePublishWeek);
+document.getElementById('btnDashRefresh').addEventListener('click',()=>{ if(dashTab==='analytics')loadDashboard();else loadHistory(); });
+document.getElementById('dashTabAnalytics').addEventListener('click',()=>switchDashTab('analytics'));
+document.getElementById('dashTabHistory').addEventListener('click',()=>switchDashTab('history'));
+document.getElementById('dashRange').addEventListener('change',()=>{ if(dashTab==='analytics')loadDashboard(); });
+document.getElementById('dashGroup').addEventListener('change',()=>{ if(dashTab==='analytics')loadDashboard(); });
 document.getElementById('btnAddStaff').addEventListener('click',openAddStaff);
 document.getElementById('btnAddGroup').addEventListener('click',openAddGroup);
 document.getElementById('btnSaveSeats').addEventListener('click',async()=>{
