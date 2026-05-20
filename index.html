@@ -210,6 +210,8 @@ tbody tr:hover td.nc{background:var(--surface2);}
 .db.wknd{background:transparent;color:var(--text3);border-color:transparent;cursor:default;}
 .db.tod{box-shadow:0 0 0 2px var(--green);}
 .db.locked{border-style:dashed;}
+.db.holiday{background:var(--amber-bg);color:var(--amber-t);border-color:var(--amber-bd);cursor:default;font-size:8px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:50px;}
+.db.holiday:hover{opacity:1;transform:none;}
 .lock-btn{width:20px;height:14px;border:none;background:transparent;cursor:pointer;font-size:10px;padding:0;color:var(--text3);display:flex;align-items:center;justify-content:center;}
 .lock-btn:hover{color:var(--text);}
 .lock-btn.on{color:var(--amber-t);}
@@ -225,6 +227,11 @@ tbody tr:hover td.nc{background:var(--surface2);}
 .dash-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:18px 20px;box-shadow:var(--shadow);}
 .dash-card h3{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.04em;}
 .dash-filter-bar{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;background:var(--surface);padding:12px 16px;border:1px solid var(--border);border-radius:var(--r);}
+.export-dropdown{position:relative;display:inline-block;}
+.export-menu{display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow);min-width:190px;z-index:100;overflow:hidden;}
+.export-dropdown.open .export-menu{display:block;}
+.export-menu button{display:block;width:100%;text-align:left;padding:9px 14px;font-size:13px;border:none;background:transparent;cursor:pointer;color:var(--text);font-family:'DM Sans',sans-serif;}
+.export-menu button:hover{background:var(--surface2);}
 .dash-filter-bar label{font-size:12px;color:var(--text2);font-weight:500;}
 .dash-filter-bar select{border:1px solid var(--border2);border-radius:var(--r);padding:5px 10px;font-size:12px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;}
 .kpi-dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:1.5rem;}
@@ -595,6 +602,13 @@ tbody tr:hover td.nc{background:var(--surface2);}
         <label style="margin-left:12px" id="dashGroupLabel">Group:</label>
         <select id="dashGroup"><option value="">All groups</option></select>
         <button class="btn sec" id="btnDashRefresh" style="margin-left:auto">↻ Refresh</button>
+        <div class="export-dropdown" id="exportDropdown">
+          <button class="btn sec" id="btnExportReport">↓ Export Report ▾</button>
+          <div class="export-menu">
+            <button onclick="exportAnalyticsReport('range');document.getElementById('exportDropdown').classList.remove('open')">Current date range</button>
+            <button onclick="exportAnalyticsReport('all');document.getElementById('exportDropdown').classList.remove('open')">All published weeks</button>
+          </div>
+        </div>
       </div>
       <div id="dashContent"><div class="dash-empty">Select a time range and click Refresh to load data.</div></div>
     </div>
@@ -609,6 +623,7 @@ tbody tr:hover td.nc{background:var(--surface2);}
         <div class="settings-nav-item active" data-sec="staff"><span class="sni">👥</span>Staff</div>
         <div class="settings-nav-item" data-sec="groups"><span class="sni">🏷</span>Groups</div>
         <div class="settings-nav-item" data-sec="users"><span class="sni">🔐</span>Users &amp; Access</div>
+        <div class="settings-nav-item" data-sec="holidays"><span class="sni">🗓</span>Holidays</div>
         <div class="settings-nav-item" data-sec="general"><span class="sni">🪑</span>General</div>
       </div>
 
@@ -648,6 +663,26 @@ tbody tr:hover td.nc{background:var(--surface2);}
             <table class="user-table">
               <thead><tr><th>User</th><th>Linked staff member</th><th>Role</th><th></th></tr></thead>
               <tbody id="userTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Holidays -->
+        <div class="settings-section" id="secHolidays">
+          <h2>Public holidays</h2>
+          <div class="desc">Mark company-wide holidays. Those days are automatically locked for all staff in the schedule.</div>
+          <div class="card" id="holAddCard" style="margin-bottom:16px">
+            <h3>Add holiday</h3>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+              <div class="fr" style="flex:0 0 auto"><label>Date</label><input type="date" id="holDate" style="min-width:150px"></div>
+              <div class="fr" style="flex:1;min-width:160px"><label>Holiday name</label><input type="text" id="holName" placeholder="e.g. Eid Al-Fitr" maxlength="60"></div>
+              <button class="btn pri" id="btnAddHoliday">+ Add holiday</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table class="st-table">
+              <thead><tr><th>Date</th><th>Holiday name</th><th></th></tr></thead>
+              <tbody id="holidayTableBody"><tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text3)">Loading...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -712,6 +747,7 @@ let theme=localStorage.getItem('wsp_theme')||'light';
 let view=localStorage.getItem('wsp_view')||'week';
 let navDate=today(),user=null,role='viewer',canEdit=false;
 let entries={},rotDebt={};
+let holidayMap={},holidays=[];
 
 function today(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
 function dk(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());}
@@ -726,7 +762,7 @@ function periodStr(){const d=getDays(),o={month:'short',day:'numeric'};if(view==
 function eKey(sid,d){return sid+'__'+dk(d);}
 function getE(m,d){return entries[eKey(m.id,d)]||null;}
 function getSt(m,d){const e=getE(m,d);if(e)return e.status;return(m.pattern||{})[d.getDay()]||null;}
-function isLocked(m,d){const e=getE(m,d);return e?!!e.is_locked:false;}
+function isLocked(m,d){if(holidayMap[dk(d)])return true;const e=getE(m,d);return e?!!e.is_locked:false;}
 function safeInt(id){const v=document.getElementById(id).value;return v===''?null:parseInt(v);}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
@@ -744,17 +780,19 @@ function sync(state,msg){
 async function loadAll(){
   sync('syncing','Loading...');
   try{
-    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD},{data:wpD}]=await Promise.all([
+    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD},{data:wpD},{data:holD}]=await Promise.all([
       db.from('groups').select('*').order('sort_order'),
       db.from('staff').select('*').order('sort_order'),
       db.from('rotation_debt').select('*'),
       db.from('app_settings').select('*'),
       db.from('week_plans').select('*'),
+      db.from('holidays').select('id,date,name').order('date',{ascending:true}),
     ]);
     if(gE)throw gE; if(sE)throw sE;
     G=gD||[]; S=sD||[];
     rotDebt={};(dD||[]).forEach(r=>{rotDebt[r.staff_id]=r.debt;});
     weekPlanCache={};(wpD||[]).forEach(r=>{weekPlanCache[r.week_start]=r;});
+    holidays=holD||[];holidayMap={};holidays.forEach(h=>{holidayMap[h.date]=h.name;});
     (stD||[]).forEach(r=>{
       if(r.key==='seats'){
         seats=parseInt(r.value)||7;
@@ -918,6 +956,7 @@ async function reshuffle(){
       if(isLocked(m,day))return false;
       const e=getE(m,day);
       if(e&&(e.status==='leave'||e.status==='other'))return false;
+      if(!e){const pat=(m.pattern||{})[dow]||null;if(!pat||pat==='leave'||pat==='other')return false;}
       return true;
     });
     if(!candidates.length)return;
@@ -926,7 +965,7 @@ async function reshuffle(){
     const scored=candidates.map(m=>{
       const tO=m.tgt_office||0,tR=m.tgt_remote||0,tot=tO+tR;
       const ratio=tot>0?tO/tot:0.5;
-      return{m,score:(rotDebt[m.id]||0)+ratio*10,ratio};
+      return{m,score:(rotDebt[m.id]||0)+ratio*0.01,ratio};
     }).sort((a,b)=>b.score-a.score);
     scored.forEach(({m,ratio},i)=>{
       const status=i<slots?'office':'remote';
@@ -1006,9 +1045,11 @@ function renderSchedule(){
     const gname=grp?grp.name:'Unassigned',gcol=grp?grp.color:'#999';
     const open=!collapsed[gid];
     const hcols=days.map(d=>{
-      const wk=isWE(d),td=isToday(d);
-      const lbl=view==='week'?`${DN[d.getDay()]}<br><small style="font-weight:400;font-size:10px">${d.getDate()} ${MS[d.getMonth()]}</small>`:`<small>${d.getDate()}</small>`;
-      return`<th${td?' class="thd"':wk?' style="opacity:.3"':''}>${lbl}</th>`;
+      const wk=isWE(d),td=isToday(d),holName=holidayMap[dk(d)];
+      const lbl=view==='week'
+        ?`${DN[d.getDay()]}<br><small style="font-weight:400;font-size:10px">${d.getDate()} ${MS[d.getMonth()]}${holName?`<br><span style="color:var(--amber-t);font-size:8px">${esc(holName)}</span>`:''}</small>`
+        :`<small>${d.getDate()}${holName?'*':''}</small>`;
+      return`<th${td?' class="thd"':wk?' style="opacity:.3"':holName?' style="background:var(--amber-bg)"':''}>${lbl}</th>`;
     }).join('');
     const mrows=members.map(m=>{
       const aO=wds.filter(d=>getSt(m,d)==='office').length;
@@ -1018,7 +1059,9 @@ function renderSchedule(){
       function pc(a,t){if(t==null)return'';return a>t?' tp-over':a<t?' tp-under':'';}
       const dcells=days.map(d=>{
         if(isWE(d))return'<td><span class="db wknd">—</span></td>';
-        const st=getSt(m,d),locked=isLocked(m,d),dkv=dk(d);
+        const dkv=dk(d),holName=holidayMap[dkv];
+        if(holName)return`<td style="background:var(--amber-bg)"><div class="day-cell"><span class="db holiday" title="${esc(holName)}">${holName.length>5?holName.slice(0,4)+'…':holName}</span></div></td>`;
+        const st=getSt(m,d),locked=isLocked(m,d);
         const cls=st?' '+st:'';
         return`<td><div class="day-cell">
           <button class="db${cls}${locked?' locked':''}${isToday(d)?' tod':''}" data-mid="${m.id}" data-dk="${dkv}" ${locked?'title="Locked"':''} ${!canEdit?'disabled':''}>${st?SM[st].s:'·'}</button>
@@ -1040,6 +1083,7 @@ function renderSchedule(){
     }).join('');
     const cntcells=days.map(d=>{
       if(isWE(d))return'<td></td>';
+      if(holidayMap[dk(d)])return`<td style="text-align:center;font-size:9px;color:var(--amber-t);background:var(--amber-bg);font-weight:600">Holiday</td>`;
       const n=members.filter(m=>getSt(m,d)==='office').length;
       return`<td class="${n>cap?'cnt-ov':n===cap?'cnt-wn':'cnt-ok'}">${n}${n>cap?'⚠':''}/${cap}</td>`;
     }).join('');
@@ -1342,12 +1386,16 @@ async function loadDashboard(){
     });
   });
 
-  /* Staff totals — pattern fallback + 'other' as office */
+  /* Staff totals — assigned days only (pattern or explicit DB entry) */
   const staffTotals={};
   staffFilter.forEach(m=>{staffTotals[m.id]={name:m.name,role:m.role,tO:m.tgt_office||0,tR:m.tgt_remote||0,office:0,remote:0,leave:0};});
   allWD.forEach(ds=>{
     staffFilter.forEach(m=>{
       if(!staffTotals[m.id])return;
+      const raw=entryLookup[m.id+'__'+ds];
+      const dow=new Date(ds+'T00:00:00').getDay();
+      const pat=(m.pattern||{})[dow]||null;
+      if(!raw&&(!pat||pat==='leave'||pat==='other'))return;
       const st=effSt(m.id,ds,m.pattern);
       if(st==='office')staffTotals[m.id].office++;
       else if(st==='remote')staffTotals[m.id].remote++;
@@ -1522,6 +1570,166 @@ function switchSettingsSection(sec){
   document.querySelectorAll('.settings-section').forEach(s=>s.classList.remove('active'));
   document.querySelector(`.settings-nav-item[data-sec="${sec}"]`)?.classList.add('active');
   document.getElementById('sec'+sec.charAt(0).toUpperCase()+sec.slice(1))?.classList.add('active');
+  if(sec==='holidays')loadHolidays();
+}
+
+/* ═══════════════════════════════════════════════════
+   HOLIDAY MANAGEMENT
+═══════════════════════════════════════════════════ */
+async function loadHolidays(){
+  const{data,error}=await db.from('holidays').select('id,date,name').order('date',{ascending:true});
+  if(error){console.error(error);return;}
+  holidays=data||[];
+  holidayMap={};holidays.forEach(h=>{holidayMap[h.date]=h.name;});
+  renderHolidays();
+  renderAll();
+}
+
+function renderHolidays(){
+  const card=document.getElementById('holAddCard');
+  if(card)card.style.display=canEdit?'':'none';
+  const tbody=document.getElementById('holidayTableBody');if(!tbody)return;
+  if(!holidays.length){
+    tbody.innerHTML='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text3)">No holidays yet. Add one above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML=holidays.map(h=>`<tr>
+    <td style="padding:8px 12px;font-family:'DM Mono',monospace;font-size:12px">${esc(h.date)}</td>
+    <td style="padding:8px 12px">${esc(h.name)}</td>
+    <td style="padding:8px 6px;text-align:right">${canEdit?`<button class="btn xs dng" data-act="del-holiday" data-hid="${h.id}" data-hdate="${esc(h.date)}">Remove</button>`:''}</td>
+  </tr>`).join('');
+}
+
+async function addHoliday(){
+  if(!canEdit)return;
+  const date=document.getElementById('holDate').value;
+  const name=(document.getElementById('holName').value||'').trim();
+  if(!date||!name){alert('Please enter both a date and a holiday name.');return;}
+  sync('syncing','Saving...');
+  const{error}=await db.from('holidays').upsert({date,name},{onConflict:'date'});
+  if(error){sync('err',error.message);alert('Failed to save: '+error.message);return;}
+  document.getElementById('holDate').value='';
+  document.getElementById('holName').value='';
+  await loadHolidays();
+  sync('ok','Holiday added');
+}
+
+async function deleteHoliday(id,date){
+  if(!canEdit)return;
+  if(!window.confirm('Remove holiday on '+date+'?'))return;
+  sync('syncing','Removing...');
+  const{error}=await db.from('holidays').delete().eq('id',id);
+  if(error){sync('err',error.message);return;}
+  await loadHolidays();
+  sync('ok','Holiday removed');
+}
+
+/* ═══════════════════════════════════════════════════
+   ANALYTICS EXCEL EXPORT
+═══════════════════════════════════════════════════ */
+async function exportAnalyticsReport(scope){
+  if(typeof XLSX==='undefined'){alert('Export library not ready.');return;}
+  sync('syncing','Building report...');
+  try{
+    let pubWeeks;
+    if(scope==='all'){
+      const{data}=await db.from('week_plans').select('week_start,published_at').eq('status','published').order('week_start',{ascending:true}).limit(52);
+      pubWeeks=data||[];
+    }else{
+      const weeks=parseInt(document.getElementById('dashRange').value)||8;
+      const endDate=today(),rangeStart=new Date(endDate);
+      rangeStart.setDate(rangeStart.getDate()-weeks*7);
+      const{data:allPubW}=await db.from('week_plans').select('week_start,published_at').eq('status','published').order('week_start',{ascending:true});
+      pubWeeks=(allPubW||[]).filter(w=>{const ws=new Date(w.week_start+'T00:00:00'),we=new Date(ws);we.setDate(ws.getDate()+6);return we>=rangeStart&&ws<=endDate;});
+    }
+    if(!pubWeeks.length){alert('No published weeks to export.');sync('ok','');return;}
+
+    const effStart=pubWeeks[0].week_start;
+    const lastWs=new Date(pubWeeks[pubWeeks.length-1].week_start+'T00:00:00');
+    const effEnd=new Date(lastWs);effEnd.setDate(lastWs.getDate()+4);
+
+    const{data:hist}=await db.from('schedule_entries').select('staff_id,entry_date,status').gte('entry_date',effStart).lte('entry_date',dk(effEnd));
+    const entryLookup={};
+    (hist||[]).forEach(r=>{entryLookup[r.staff_id+'__'+r.entry_date]=r.status;});
+
+    function sunKeyEx(ds){const d=new Date(ds+'T00:00:00');return dk(new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()));}
+    function effStEx(sid,ds,pat){const raw=entryLookup[sid+'__'+ds];const st=raw!==undefined?raw:((pat||{})[new Date(ds+'T00:00:00').getDay()]||null);return st==='other'?'office':st;}
+
+    const publishedSet=new Set(pubWeeks.map(w=>w.week_start));
+    const allWD=[];
+    const cur=new Date(effStart+'T00:00:00');
+    while(cur<=effEnd){if(!isWE(cur)){const ds=dk(new Date(cur));if(publishedSet.has(sunKeyEx(ds)))allWD.push(ds);}cur.setDate(cur.getDate()+1);}
+
+    const dailyMap={};
+    allWD.forEach(ds=>{dailyMap[ds]={office:0,remote:0};S.forEach(m=>{const st=effStEx(m.id,ds,m.pattern);if(st==='office')dailyMap[ds].office++;else if(st==='remote')dailyMap[ds].remote++;});});
+
+    const staffTotalsEx={};
+    S.forEach(m=>{staffTotalsEx[m.id]={name:m.name,role:m.role||'',tO:m.tgt_office||0,tR:m.tgt_remote||0,office:0,remote:0,leave:0,days:0};});
+    allWD.forEach(ds=>{
+      S.forEach(m=>{
+        const raw=entryLookup[m.id+'__'+ds];
+        const dow=new Date(ds+'T00:00:00').getDay();
+        const pat=(m.pattern||{})[dow]||null;
+        if(!raw&&(!pat||pat==='leave'||pat==='other'))return;
+        staffTotalsEx[m.id].days++;
+        const st=effStEx(m.id,ds,m.pattern);
+        if(st==='office')staffTotalsEx[m.id].office++;
+        else if(st==='remote')staffTotalsEx[m.id].remote++;
+        else if(st==='leave')staffTotalsEx[m.id].leave++;
+      });
+    });
+
+    const dowMapEx={0:{o:0,r:0,n:0},1:{o:0,r:0,n:0},2:{o:0,r:0,n:0},3:{o:0,r:0,n:0},4:{o:0,r:0,n:0}};
+    allWD.forEach(ds=>{const dow=new Date(ds+'T00:00:00').getDay();if(dowMapEx[dow]!==undefined){dowMapEx[dow].n++;dowMapEx[dow].o+=dailyMap[ds].office;dowMapEx[dow].r+=dailyMap[ds].remote;}});
+
+    const wb=XLSX.utils.book_new();
+    const hSt={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:'1B5E20'}},alignment:{horizontal:'center'}};
+
+    /* Sheet 1 — Weekly Summary */
+    const s1=[['Workspace Planner — Weekly Summary'],['Generated: '+new Date().toLocaleDateString('en-US',{day:'numeric',month:'long',year:'numeric'})],[]];
+    s1.push(['Week','Published Date','Working Days','In-Office Days','Remote Days','Seat Utilization']);
+    pubWeeks.forEach(w=>{
+      const ws=new Date(w.week_start+'T00:00:00'),we=new Date(ws);we.setDate(ws.getDate()+4);
+      let wO=0,wR=0,wD=0;
+      allWD.forEach(ds=>{const d=new Date(ds+'T00:00:00');if(d>=ws&&d<=we){wD++;wO+=dailyMap[ds].office;wR+=dailyMap[ds].remote;}});
+      const lbl=ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+we.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const pub=w.published_at?new Date(w.published_at).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):'Draft';
+      s1.push([lbl,pub,wD,wO,wR,(wD>0&&seats>0?Math.round(wO/wD/seats*100):0)+'%']);
+    });
+    const ws1=XLSX.utils.aoa_to_sheet(s1);
+    ws1['!cols']=[{wch:34},{wch:18},{wch:14},{wch:16},{wch:14},{wch:18}];
+    for(let c=0;c<6;c++){const a=XLSX.utils.encode_cell({r:3,c});if(!ws1[a])ws1[a]={t:'s',v:''};ws1[a].s=hSt;}
+    XLSX.utils.book_append_sheet(wb,ws1,'Weekly Summary');
+
+    /* Sheet 2 — Staff Breakdown */
+    const s2=[['Workspace Planner — Staff Breakdown'],[]];
+    s2.push(['Name','Role','In-Office Days','Remote Days','Leave Days','Assigned Days','Office %','Target %','vs Target']);
+    Object.values(staffTotalsEx).sort((a,b)=>b.office-a.office).forEach(st=>{
+      const total=st.days,pct=total>0?Math.round(st.office/total*100):0;
+      const tgtPct=st.tO+st.tR>0?Math.round(st.tO/(st.tO+st.tR)*100):50;
+      const diff=pct-tgtPct;
+      s2.push([st.name,st.role,st.office,st.remote,st.leave,total,pct+'%',tgtPct+'%',(diff>0?'+':'')+diff+'%']);
+    });
+    const ws2=XLSX.utils.aoa_to_sheet(s2);
+    ws2['!cols']=[{wch:22},{wch:18},{wch:16},{wch:14},{wch:14},{wch:16},{wch:12},{wch:12},{wch:12}];
+    for(let c=0;c<9;c++){const a=XLSX.utils.encode_cell({r:2,c});if(!ws2[a])ws2[a]={t:'s',v:''};ws2[a].s=hSt;}
+    XLSX.utils.book_append_sheet(wb,ws2,'Staff Breakdown');
+
+    /* Sheet 3 — Day of Week */
+    const s3=[['Workspace Planner — Attendance by Day of Week'],[]];
+    s3.push(['Day','Avg In-Office','Avg Remote','Avg Utilization','Occurrences']);
+    ['Sun','Mon','Tue','Wed','Thu'].forEach((d,i)=>{
+      const{o,r,n}=dowMapEx[WD[i]]||{o:0,r:0,n:0};
+      s3.push([d,n>0?Math.round(o/n*10)/10:0,n>0?Math.round(r/n*10)/10:0,(n>0&&seats>0?Math.round(o/n/seats*100):0)+'%',n]);
+    });
+    const ws3=XLSX.utils.aoa_to_sheet(s3);
+    ws3['!cols']=[{wch:12},{wch:16},{wch:14},{wch:18},{wch:14}];
+    for(let c=0;c<5;c++){const a=XLSX.utils.encode_cell({r:2,c});if(!ws3[a])ws3[a]={t:'s',v:''};ws3[a].s=hSt;}
+    XLSX.utils.book_append_sheet(wb,ws3,'Day of Week');
+
+    XLSX.writeFile(wb,'workspace-analytics-'+(scope==='all'?'all-time':'range')+'-'+dk(today())+'.xlsx');
+    sync('ok','Report exported');
+  }catch(e){sync('err','Export failed: '+e.message);console.error(e);}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1543,6 +1751,7 @@ document.addEventListener('click',function(e){
   const el=e.target.closest('[data-act]');if(!el)return;
   const act=el.dataset.act;
   if(act==='del-user'){removeUser(el.dataset.uid);return;}
+  if(act==='del-holiday'){deleteHoliday(el.dataset.hid,el.dataset.hdate);return;}
   if(act==='toggle-lock'){toggleLock(el.dataset.mid,el.dataset.dk);return;}
   if(act==='toggle-grp'){collapsed[el.dataset.gid]=!collapsed[el.dataset.gid];renderAll();return;}
   if(act==='edit-grp'){openEditGroup(el.dataset.gid);return;}
@@ -1799,6 +2008,10 @@ document.getElementById('dashRange').addEventListener('change',()=>{ if(dashTab=
 document.getElementById('dashGroup').addEventListener('change',()=>{ if(dashTab==='analytics')loadDashboard(); });
 document.getElementById('btnAddStaff').addEventListener('click',openAddStaff);
 document.getElementById('btnAddGroup').addEventListener('click',openAddGroup);
+document.getElementById('btnAddHoliday').addEventListener('click',addHoliday);
+document.getElementById('btnExportReport').addEventListener('click',()=>document.getElementById('exportDropdown').classList.toggle('open'));
+/* Close export dropdown when clicking outside */
+document.addEventListener('click',e=>{if(!e.target.closest('#exportDropdown'))document.getElementById('exportDropdown')?.classList.remove('open');});
 document.getElementById('btnSaveSeats').addEventListener('click',async()=>{
   const val=parseInt(document.getElementById('adminSeats').value)||7;
   seats=val;document.getElementById('kSeats').textContent=seats;
