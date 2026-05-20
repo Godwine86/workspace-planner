@@ -183,8 +183,8 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .grp-chev{font-size:11px;color:var(--text3);margin-left:auto;}
 .table-scroll{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
 table{width:100%;border-collapse:collapse;font-size:12.5px;}
-thead th{background:var(--surface2);padding:9px 7px;text-align:center;font-weight:600;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text2);letter-spacing:.02em;position:sticky;top:98px;z-index:3;}
-thead th.nc{text-align:left;min-width:175px;position:sticky;left:0;top:98px;z-index:4;background:var(--surface2);}
+thead th{background:var(--surface2);padding:9px 7px;text-align:center;font-weight:600;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text2);letter-spacing:.02em;}
+thead th.nc{text-align:left;min-width:175px;position:sticky;left:0;z-index:2;background:var(--surface2);}
 thead th.thd{background:var(--green-bg);color:var(--green-t);}
 tbody td{padding:6px 5px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;}
 tbody tr:last-child td{border-bottom:none;}
@@ -674,7 +674,8 @@ tbody tr:hover td.nc{background:var(--surface2);}
           <div class="card" id="holAddCard" style="margin-bottom:16px">
             <h3>Add holiday</h3>
             <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-              <div class="fr" style="flex:0 0 auto"><label>Date</label><input type="date" id="holDate" style="min-width:150px"></div>
+              <div class="fr" style="flex:0 0 auto"><label>Start date</label><input type="date" id="holDateFrom" style="min-width:150px"></div>
+              <div class="fr" style="flex:0 0 auto"><label>End date <span style="font-size:10px;color:var(--text3)">(same for single day)</span></label><input type="date" id="holDateTo" style="min-width:150px"></div>
               <div class="fr" style="flex:1;min-width:160px"><label>Holiday name</label><input type="text" id="holName" placeholder="e.g. Eid Al-Fitr" maxlength="60"></div>
               <button class="btn pri" id="btnAddHoliday">+ Add holiday</button>
             </div>
@@ -1602,16 +1603,26 @@ function renderHolidays(){
 
 async function addHoliday(){
   if(!canEdit)return;
-  const date=document.getElementById('holDate').value;
+  const from=document.getElementById('holDateFrom').value;
+  const to=document.getElementById('holDateTo').value||from;
   const name=(document.getElementById('holName').value||'').trim();
-  if(!date||!name){alert('Please enter both a date and a holiday name.');return;}
+  if(!from||!name){alert('Please enter a start date and holiday name.');return;}
+  if(to<from){alert('End date must be on or after start date.');return;}
+  /* Build list of all calendar days in range (weekends included — the
+     schedule already skips Fri/Sat visually, but we store all days so
+     admins can mark full holiday periods without manually picking dates) */
+  const rows=[];
+  const cur=new Date(from+'T00:00:00');
+  const end=new Date(to+'T00:00:00');
+  while(cur<=end){rows.push({date:dk(cur),name});cur.setDate(cur.getDate()+1);}
   sync('syncing','Saving...');
-  const{error}=await db.from('holidays').upsert({date,name},{onConflict:'date'});
+  const{error}=await db.from('holidays').upsert(rows,{onConflict:'date'});
   if(error){sync('err',error.message);alert('Failed to save: '+error.message);return;}
-  document.getElementById('holDate').value='';
+  document.getElementById('holDateFrom').value='';
+  document.getElementById('holDateTo').value='';
   document.getElementById('holName').value='';
   await loadHolidays();
-  sync('ok','Holiday added');
+  sync('ok',rows.length===1?'Holiday added':rows.length+' holiday days added');
 }
 
 async function deleteHoliday(id,date){
