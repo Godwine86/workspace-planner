@@ -334,7 +334,6 @@ tbody tr:hover td.nc{background:var(--surface2);}
 /* ── MODERN UI ENHANCEMENTS ─────────────────────────── */
 
 /* Topbar: subtle bottom accent line */
-.topbar{position:relative;}
 .topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green) 0%,#6DBE5C 30%,transparent 70%);opacity:.55;pointer-events:none;}
 
 /* Nav tabs: underline active indicator instead of filled bg */
@@ -959,7 +958,10 @@ async function reshuffle(){
   }
   const days=getDays().filter(d=>!isWE(d)),cap=seats;
   sync('syncing','Reshuffling...');
-  S.forEach(m=>{if(rotDebt[m.id]==null)rotDebt[m.id]=0;});
+  /* Fair weekly rotation: track how many office days each person has been
+     assigned so far this week and prioritise those with fewer. No cross-week
+     debt — each reshuffle is self-contained to the current week. */
+  const weekOff={};S.forEach(m=>{weekOff[m.id]=0;});
   const upserts=[],deletes=[];
   days.forEach(day=>{
     const key=dk(day),dow=day.getDay();
@@ -973,26 +975,25 @@ async function reshuffle(){
     if(!candidates.length)return;
     const lockedOff=S.filter(m=>isLocked(m,day)&&getSt(m,day)==='office').length;
     const slots=Math.min(Math.max(0,cap-lockedOff),candidates.length);
+    /* Score: fewer office days this week = higher priority; target ratio breaks ties */
     const scored=candidates.map(m=>{
       const tO=m.tgt_office||0,tR=m.tgt_remote||0,tot=tO+tR;
       const ratio=tot>0?tO/tot:0.5;
-      return{m,score:(rotDebt[m.id]||0)+ratio*0.01,ratio};
+      return{m,score:-(weekOff[m.id]||0)+ratio*0.001};
     }).sort((a,b)=>b.score-a.score);
-    scored.forEach(({m,ratio},i)=>{
+    scored.forEach(({m},i)=>{
       const status=i<slots?'office':'remote';
+      if(status==='office')weekOff[m.id]=(weekOff[m.id]||0)+1;
       const base=(m.pattern||{})[dow]||null;
       const k=eKey(m.id,day);
       if(status===base){deletes.push({staff_id:m.id,entry_date:key});delete entries[k];}
       else{entries[k]={status,is_locked:false};upserts.push({staff_id:m.id,entry_date:key,status,is_locked:false});}
-      if(status==='remote')rotDebt[m.id]=(rotDebt[m.id]||0)+ratio;
-      else rotDebt[m.id]=(rotDebt[m.id]||0)-(1-ratio);
     });
   });
   renderAll();
   try{
     if(upserts.length)await db.from('schedule_entries').upsert(upserts,{onConflict:'staff_id,entry_date'});
     for(const d of deletes)await db.from('schedule_entries').delete().eq('staff_id',d.staff_id).eq('entry_date',d.entry_date);
-    await db.from('rotation_debt').upsert(S.map(m=>({staff_id:m.id,debt:rotDebt[m.id]||0})),{onConflict:'staff_id'});
     sync('ok','Reshuffled & saved');
   }catch(e){sync('err','Reshuffle failed: '+e.message);}
 }
@@ -1255,20 +1256,19 @@ async function loadHistory(){
       .lte('entry_date',dk(we));
     const entryMap={};
     (entries||[]).forEach(r=>{entryMap[r.staff_id+'__'+r.entry_date]=r.status;});
-    const days=['Sun','Mon','Tue','Wed','Thu'];
+    /* Build actual workdays for this week (Sun–Thu) with their real dates */
+    const wkDates=Array.from({length:5},(_,i)=>{const d=new Date(ws);d.setDate(ws.getDate()+i);return d;});
     const offCount={};
-    days.forEach((_,i)=>{
-      const d=new Date(ws);d.setDate(ws.getDate()+i);
-      offCount[days[i]]=S.filter(m=>{
-        const pat=(m.pattern||{})[d.getDay()]||null;
-        const ov=entryMap[m.id+'__'+dk(d)];
-        const st=ov||pat;
-        return st==='office'||st==='other'; /* other office counts as in-office */
+    wkDates.forEach(d=>{
+      const dkStr=dk(d);
+      offCount[dkStr]=S.filter(m=>{
+        const st=entryMap[m.id+'__'+dkStr];
+        return st==='office'||st==='other';
       }).length;
     });
     const isPublished=plan.status==='published';
     const pubDate=plan.published_at?new Date(plan.published_at).toLocaleDateString('en-US',{day:'numeric',month:'short',year:'numeric'}):'—';
-    return{plan,ws,offCount,days,isPublished,pubDate,entryMap};
+    return{plan,ws,wkDates,offCount,isPublished,pubDate,entryMap};
   }));
 
   const html=`
@@ -1277,18 +1277,15 @@ async function loadHistory(){
       &nbsp;·&nbsp; <span style="color:var(--green-t)">🔒 Published</span> weeks are locked
       &nbsp;·&nbsp; <span style="color:var(--text3)">✏️ Draft</span> weeks are still editable
     </div>
-    ${weekRows.map(({plan,ws,offCount,days,isPublished,pubDate,entryMap})=>{
+    ${weekRows.map(({plan,ws,wkDates,offCount,isPublished,pubDate,entryMap})=>{
       const label=ws.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+
         new Date(ws.getFullYear(),ws.getMonth(),ws.getDate()+4).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
       const statusBadge=isPublished
         ?'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--green-bg);color:var(--green-t);border:1px solid var(--green-bd);font-weight:500">🔒 Published</span>'
         :'<span style="font-size:11px;padding:2px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);font-weight:500">✏️ Draft</span>';
-      const dayCols=days.map((d,i)=>`
-        <td style="text-align:center;padding:10px 8px">
-          <div style="font-size:10px;color:var(--text2);margin-bottom:3px">${d}</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${offCount[d]>=seats?'var(--red)':offCount[d]>=seats*.8?'var(--warn)':'var(--green-t)'}">${offCount[d]}</div>
-          <div style="font-size:9px;color:var(--text3)">/${seats}</div>
-        </td>`).join('');
+      const colors={office:'var(--green-bg)',remote:'var(--blue-bg)',leave:'var(--gray-bg)',other:'var(--amber-bg)'};
+      const textColors={office:'var(--green-t)',remote:'var(--blue-t)',leave:'var(--gray-t)',other:'var(--amber-t)'};
+      const lbl={office:'OFF',remote:'REM',leave:'LVE',other:'OTH'};
       return`<div class="card" style="margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
           <div style="font-weight:600;font-size:14px">${label}</div>
@@ -1300,21 +1297,16 @@ async function loadHistory(){
             <thead>
               <tr style="background:var(--surface2)">
                 <th style="text-align:left;padding:8px 12px;font-weight:500;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)">Staff</th>
-                ${days.map(d=>`<th style="text-align:center;padding:8px;font-weight:500;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)">${d}</th>`).join('')}
+                ${wkDates.map(d=>`<th style="text-align:center;padding:8px;font-weight:500;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)">${DN[d.getDay()]}<br><span style="font-weight:400;font-size:10px">${d.getDate()} ${MS[d.getMonth()]}</span></th>`).join('')}
               </tr>
             </thead>
             <tbody>
               ${S.map(m=>{
-                const pat=m.pattern||{};
-                const dayCells=days.map((_,i)=>{
-                  const d=new Date(ws);d.setDate(ws.getDate()+i);
-                  const ov=entryMap[m.id+'__'+dk(d)];
-                  const st=ov||(pat[d.getDay()]||null);
-                  const colors={office:'var(--green-bg)',remote:'var(--blue-bg)',leave:'var(--gray-bg)',other:'var(--amber-bg)'};
-                  const textColors={office:'var(--green-t)',remote:'var(--blue-t)',leave:'var(--gray-t)',other:'var(--amber-t)'};
-                  const label={office:'OFF',remote:'REM',leave:'LVE',other:'OTH'};
+                const dayCells=wkDates.map(d=>{
+                  const dkStr=dk(d);
+                  const st=entryMap[m.id+'__'+dkStr]||null;
                   return`<td style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--border)">
-                    ${st?`<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;background:${colors[st]};color:${textColors[st]}">${label[st]}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}
+                    ${st?`<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;background:${colors[st]};color:${textColors[st]}">${lbl[st]}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}
                   </td>`;
                 }).join('');
                 return`<tr style="border-bottom:1px solid var(--border)">
@@ -1324,7 +1316,7 @@ async function loadHistory(){
               }).join('')}
               <tr style="background:var(--surface2)">
                 <td style="padding:8px 12px;font-size:11px;color:var(--text2);font-weight:600">In office</td>
-                ${days.map(d=>`<td style="text-align:center;padding:8px;font-weight:700;font-size:12px;font-family:'DM Mono',monospace;color:${offCount[d]>=seats?'var(--red)':'var(--green-t)'}">${offCount[d]}/${seats}</td>`).join('')}
+                ${wkDates.map(d=>{const c=offCount[dk(d)]||0;return`<td style="text-align:center;padding:8px;font-weight:700;font-size:12px;font-family:'DM Mono',monospace;color:${c>=seats?'var(--red)':'var(--green-t)'}">${c}/${seats}</td>`;}).join('')}
               </tr>
             </tbody>
           </table>
