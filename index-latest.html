@@ -188,9 +188,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .grp-spacer>td{height:10px;background:var(--bg);padding:0;border:none!important;line-height:0;}
 .grp-row:hover>td,.grp-spacer:hover>td{background:inherit!important;}
 .table-scroll{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
-.sched-scroll{overflow-x:auto;overflow-y:clip;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
-.sched-scroll thead th{position:sticky;top:98px;z-index:3;}
-.sched-scroll thead th.nc{position:sticky;top:98px;left:0;z-index:4;}
+.sched-scroll{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
+.hc-holiday{background:var(--amber-bg);color:var(--amber-t);border-color:var(--amber-bd);}
+[data-theme="dark"] .hc-holiday{background:#261A00;color:#F0B060;border-color:#5A3E0A;}
 table{width:100%;border-collapse:collapse;font-size:12.5px;}
 thead th{background:var(--surface2);padding:9px 7px;text-align:center;font-weight:600;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text2);letter-spacing:.02em;}
 thead th.nc{text-align:left;min-width:175px;position:sticky;left:0;z-index:2;background:var(--surface2);}
@@ -961,7 +961,9 @@ async function reshuffle(){
   /* Fair weekly rotation: track how many office days each person has been
      assigned so far this week and prioritise those with fewer. No cross-week
      debt — each reshuffle is self-contained to the current week. */
-  const weekOff={};S.forEach(m=>{weekOff[m.id]=0;});
+  /* Initialise weekly office-day counter with already-locked office assignments */
+  const weekOff={};
+  S.forEach(m=>{weekOff[m.id]=days.filter(day=>isLocked(m,day)&&getSt(m,day)==='office').length;});
   const upserts=[],deletes=[];
   days.forEach(day=>{
     const key=dk(day),dow=day.getDay();
@@ -975,11 +977,12 @@ async function reshuffle(){
     if(!candidates.length)return;
     const lockedOff=S.filter(m=>isLocked(m,day)&&getSt(m,day)==='office').length;
     const slots=Math.min(Math.max(0,cap-lockedOff),candidates.length);
-    /* Score: fewer office days this week = higher priority; target ratio breaks ties */
+    /* Score: target office ratio minus how much has already been assigned this week.
+       Higher deficit = higher priority for office assignment. */
     const scored=candidates.map(m=>{
       const tO=m.tgt_office||0,tR=m.tgt_remote||0,tot=tO+tR;
-      const ratio=tot>0?tO/tot:0.5;
-      return{m,score:-(weekOff[m.id]||0)+ratio*0.001};
+      const targetRatio=tot>0?tO/tot:0.5;
+      return{m,score:targetRatio-(weekOff[m.id]||0)/5};
     }).sort((a,b)=>b.score-a.score);
     scored.forEach(({m},i)=>{
       const status=i<slots?'office':'remote';
@@ -1032,6 +1035,13 @@ function renderKPIs(){
 function renderHeatmap(){
   const days=getDays().filter(d=>!isWE(d));let html='';
   days.forEach(d=>{
+    const holName=holidayMap[dk(d)];
+    if(holName){
+      html+=`<div class="hcell hc-holiday${isToday(d)?' db tod':''}" title="${DN[d.getDay()]} ${d.getDate()} ${MS[d.getMonth()]}: ${esc(holName)}">
+        <div class="hd">${DN[d.getDay()]}</div><div class="hn">${d.getDate()}</div><div class="hc" style="font-size:8px">HOL</div>
+      </div>`;
+      return;
+    }
     const n=S.filter(m=>getSt(m,d)==='office').length;
     const pct=seats>0?n/seats:0;
     const cls=n===0?'hc-empty':n>seats?'hc-over':pct>=1?'hc-full':pct>=0.5?'hc-mid':'hc-low';
@@ -1262,7 +1272,8 @@ async function loadHistory(){
     wkDates.forEach(d=>{
       const dkStr=dk(d);
       offCount[dkStr]=S.filter(m=>{
-        const st=entryMap[m.id+'__'+dkStr];
+        const raw=entryMap[m.id+'__'+dkStr];
+        const st=raw!==undefined?raw:((m.pattern||{})[d.getDay()]||null);
         return st==='office'||st==='other';
       }).length;
     });
@@ -1304,7 +1315,8 @@ async function loadHistory(){
               ${S.map(m=>{
                 const dayCells=wkDates.map(d=>{
                   const dkStr=dk(d);
-                  const st=entryMap[m.id+'__'+dkStr]||null;
+                  const raw=entryMap[m.id+'__'+dkStr];
+                  const st=raw!==undefined?raw:((m.pattern||{})[d.getDay()]||null);
                   return`<td style="text-align:center;padding:6px 4px;border-bottom:1px solid var(--border)">
                     ${st?`<span style="display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:'DM Mono',monospace;background:${colors[st]};color:${textColors[st]}">${lbl[st]}</span>`:'<span style="color:var(--text3);font-size:10px">—</span>'}
                   </td>`;
@@ -1372,10 +1384,9 @@ async function loadDashboard(){
   function sunKey(ds){const d=new Date(ds+'T00:00:00');return dk(new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()));}
 
   /* Effective status: DB entry first, then pattern; 'other office' → counts as 'office' */
-  function effSt(sid,ds,pat){
+  function effSt(sid,ds){
     const raw=entryLookup[sid+'__'+ds];
-    const st=raw!==undefined?raw:((pat||{})[new Date(ds+'T00:00:00').getDay()]||null);
-    return st==='other'?'office':st;
+    return raw==='other'?'office':raw||null;
   }
 
   /* Build list of published working days */
@@ -1392,24 +1403,22 @@ async function loadDashboard(){
   allWD.forEach(ds=>{
     dailyMap[ds]={office:0,remote:0,leave:0};
     staffFilter.forEach(m=>{
-      const st=effSt(m.id,ds,m.pattern);
+      const st=effSt(m.id,ds);
       if(st==='office')dailyMap[ds].office++;
       else if(st==='remote')dailyMap[ds].remote++;
       else if(st==='leave')dailyMap[ds].leave++;
     });
   });
 
-  /* Staff totals — assigned days only (pattern or explicit DB entry) */
+  /* Staff totals — actual DB schedule_entries only */
   const staffTotals={};
-  staffFilter.forEach(m=>{staffTotals[m.id]={name:m.name,role:m.role,tO:m.tgt_office||0,tR:m.tgt_remote||0,office:0,remote:0,leave:0};});
+  staffFilter.forEach(m=>{staffTotals[m.id]={name:m.name,role:m.role,office:0,remote:0,leave:0};});
   allWD.forEach(ds=>{
     staffFilter.forEach(m=>{
       if(!staffTotals[m.id])return;
       const raw=entryLookup[m.id+'__'+ds];
-      const dow=new Date(ds+'T00:00:00').getDay();
-      const pat=(m.pattern||{})[dow]||null;
-      if(!raw&&(!pat||pat==='leave'||pat==='other'))return;
-      const st=effSt(m.id,ds,m.pattern);
+      if(!raw)return;
+      const st=effSt(m.id,ds);
       if(st==='office')staffTotals[m.id].office++;
       else if(st==='remote')staffTotals[m.id].remote++;
       else if(st==='leave')staffTotals[m.id].leave++;
@@ -1440,9 +1449,6 @@ async function loadDashboard(){
   const staffRows=Object.values(staffTotals).sort((a,b)=>b.office-a.office).map(st=>{
     const total=st.office+st.remote+st.leave;
     const pct=total>0?Math.round(st.office/total*100):0;
-    const tgtPct=st.tO+st.tR>0?Math.round(st.tO/(st.tO+st.tR)*100):50;
-    const diff=pct-tgtPct;
-    const diffHtml=diff===0?'<span style="color:var(--text3)">on target</span>':diff>0?`<span style="color:var(--green-t)">+${diff}% above</span>`:`<span style="color:var(--red-t)">${diff}% below</span>`;
     return`<tr>
       <td style="font-weight:500">${esc(st.name)}</td>
       <td style="color:var(--text2);font-size:12px">${esc(st.role)}</td>
@@ -1450,7 +1456,6 @@ async function loadDashboard(){
       <td style="font-family:'DM Mono',monospace;color:var(--blue-t);text-align:center">${st.remote}</td>
       <td style="font-family:'DM Mono',monospace;color:var(--gray-t);text-align:center">${st.leave}</td>
       <td><div class="mini-bar"><div class="mb-track"><div class="mb-fill" style="width:${pct}%;background:var(--green-bd)"></div></div><span style="font-size:11px;font-family:'DM Mono',monospace">${pct}%</span></div></td>
-      <td style="font-size:11px">${diffHtml}</td>
     </tr>`;
   }).join('');
 
@@ -1481,7 +1486,7 @@ async function loadDashboard(){
       <h3>Staff attendance breakdown</h3>
       <div class="table-scroll">
         <table class="staff-att-table">
-          <thead><tr><th>Name</th><th>Role</th><th>Office days</th><th>Remote days</th><th>Leave days</th><th>Office %</th><th>vs Target</th></tr></thead>
+          <thead><tr><th>Name</th><th>Role</th><th>Office days</th><th>Remote days</th><th>Leave days</th><th>Office %</th></tr></thead>
           <tbody>${staffRows||'<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">No staff data available.</td></tr>'}</tbody>
         </table>
       </div>
@@ -1681,7 +1686,7 @@ async function exportAnalyticsReport(scope){
     (hist||[]).forEach(r=>{entryLookup[r.staff_id+'__'+r.entry_date]=r.status;});
 
     function sunKeyEx(ds){const d=new Date(ds+'T00:00:00');return dk(new Date(d.getFullYear(),d.getMonth(),d.getDate()-d.getDay()));}
-    function effStEx(sid,ds,pat){const raw=entryLookup[sid+'__'+ds];const st=raw!==undefined?raw:((pat||{})[new Date(ds+'T00:00:00').getDay()]||null);return st==='other'?'office':st;}
+    function effStEx(sid,ds){const raw=entryLookup[sid+'__'+ds];return raw==='other'?'office':raw||null;}
 
     const publishedSet=new Set(pubWeeks.map(w=>w.week_start));
     const allWD=[];
@@ -1689,18 +1694,16 @@ async function exportAnalyticsReport(scope){
     while(cur<=effEnd){if(!isWE(cur)){const ds=dk(new Date(cur));if(publishedSet.has(sunKeyEx(ds)))allWD.push(ds);}cur.setDate(cur.getDate()+1);}
 
     const dailyMap={};
-    allWD.forEach(ds=>{dailyMap[ds]={office:0,remote:0};S.forEach(m=>{const st=effStEx(m.id,ds,m.pattern);if(st==='office')dailyMap[ds].office++;else if(st==='remote')dailyMap[ds].remote++;});});
+    allWD.forEach(ds=>{dailyMap[ds]={office:0,remote:0};S.forEach(m=>{const st=effStEx(m.id,ds);if(st==='office')dailyMap[ds].office++;else if(st==='remote')dailyMap[ds].remote++;});});
 
     const staffTotalsEx={};
     S.forEach(m=>{staffTotalsEx[m.id]={name:m.name,role:m.role||'',tO:m.tgt_office||0,tR:m.tgt_remote||0,office:0,remote:0,leave:0,days:0};});
     allWD.forEach(ds=>{
       S.forEach(m=>{
         const raw=entryLookup[m.id+'__'+ds];
-        const dow=new Date(ds+'T00:00:00').getDay();
-        const pat=(m.pattern||{})[dow]||null;
-        if(!raw&&(!pat||pat==='leave'||pat==='other'))return;
+        if(!raw)return;
         staffTotalsEx[m.id].days++;
-        const st=effStEx(m.id,ds,m.pattern);
+        const st=effStEx(m.id,ds);
         if(st==='office')staffTotalsEx[m.id].office++;
         else if(st==='remote')staffTotalsEx[m.id].remote++;
         else if(st==='leave')staffTotalsEx[m.id].leave++;
@@ -1731,16 +1734,14 @@ async function exportAnalyticsReport(scope){
 
     /* Sheet 2 — Staff Breakdown */
     const s2=[['Workspace Planner — Staff Breakdown'],[]];
-    s2.push(['Name','Role','In-Office Days','Remote Days','Leave Days','Assigned Days','Office %','Target %','vs Target']);
+    s2.push(['Name','Role','In-Office Days','Remote Days','Leave Days','Assigned Days','Office %']);
     Object.values(staffTotalsEx).sort((a,b)=>b.office-a.office).forEach(st=>{
       const total=st.days,pct=total>0?Math.round(st.office/total*100):0;
-      const tgtPct=st.tO+st.tR>0?Math.round(st.tO/(st.tO+st.tR)*100):50;
-      const diff=pct-tgtPct;
-      s2.push([st.name,st.role,st.office,st.remote,st.leave,total,pct+'%',tgtPct+'%',(diff>0?'+':'')+diff+'%']);
+      s2.push([st.name,st.role,st.office,st.remote,st.leave,total,pct+'%']);
     });
     const ws2=XLSX.utils.aoa_to_sheet(s2);
-    ws2['!cols']=[{wch:22},{wch:18},{wch:16},{wch:14},{wch:14},{wch:16},{wch:12},{wch:12},{wch:12}];
-    for(let c=0;c<9;c++){const a=XLSX.utils.encode_cell({r:2,c});if(!ws2[a])ws2[a]={t:'s',v:''};ws2[a].s=hSt;}
+    ws2['!cols']=[{wch:22},{wch:18},{wch:16},{wch:14},{wch:14},{wch:16},{wch:12}];
+    for(let c=0;c<7;c++){const a=XLSX.utils.encode_cell({r:2,c});if(!ws2[a])ws2[a]={t:'s',v:''};ws2[a].s=hSt;}
     XLSX.utils.book_append_sheet(wb,ws2,'Staff Breakdown');
 
     /* Sheet 3 — Day of Week */
