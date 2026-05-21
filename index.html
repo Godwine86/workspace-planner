@@ -181,7 +181,16 @@ body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(-
 .grp-label{font-weight:600;font-size:13.5px;}
 .grp-pill{font-size:11px;color:var(--text2);background:var(--surface2);padding:3px 9px;border-radius:20px;border:1px solid var(--border);}
 .grp-chev{font-size:11px;color:var(--text3);margin-left:auto;}
+.grp-inner{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;user-select:none;transition:background .1s;}
+.grp-inner:hover{background:var(--surface2);}
+.grp-row>td{padding:0;background:var(--surface);border-bottom:1px solid var(--border2);}
+.grp-row-cell{padding:0!important;}
+.grp-spacer>td{height:10px;background:var(--bg);padding:0;border:none!important;line-height:0;}
+.grp-row:hover>td,.grp-spacer:hover>td{background:inherit!important;}
 .table-scroll{overflow-x:auto;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
+.sched-scroll{overflow-x:auto;overflow-y:clip;border-radius:var(--rl);border:1px solid var(--border);background:var(--surface);box-shadow:var(--shadow);}
+.sched-scroll thead th{position:sticky;top:98px;z-index:3;}
+.sched-scroll thead th.nc{position:sticky;top:98px;left:0;z-index:4;}
 table{width:100%;border-collapse:collapse;font-size:12.5px;}
 thead th{background:var(--surface2);padding:9px 7px;text-align:center;font-weight:600;font-size:11px;border-bottom:1px solid var(--border);white-space:nowrap;color:var(--text2);letter-spacing:.02em;}
 thead th.nc{text-align:left;min-width:175px;position:sticky;left:0;z-index:2;background:var(--surface2);}
@@ -781,7 +790,7 @@ function sync(state,msg){
 async function loadAll(){
   sync('syncing','Loading...');
   try{
-    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD},{data:wpD},{data:holD}]=await Promise.all([
+    const[{data:gD,error:gE},{data:sD,error:sE},{data:dD},{data:stD},{data:wpD},{data:holD,error:holE}]=await Promise.all([
       db.from('groups').select('*').order('sort_order'),
       db.from('staff').select('*').order('sort_order'),
       db.from('rotation_debt').select('*'),
@@ -793,7 +802,8 @@ async function loadAll(){
     G=gD||[]; S=sD||[];
     rotDebt={};(dD||[]).forEach(r=>{rotDebt[r.staff_id]=r.debt;});
     weekPlanCache={};(wpD||[]).forEach(r=>{weekPlanCache[r.week_start]=r;});
-    holidays=holD||[];holidayMap={};holidays.forEach(h=>{holidayMap[h.date]=h.name;});
+    if(holE){console.warn('Holidays table unavailable:',holE.message);holidays=[];holidayMap={};}
+    else{holidays=holD||[];holidayMap={};holidays.forEach(h=>{holidayMap[h.date]=h.name;});}
     (stD||[]).forEach(r=>{
       if(r.key==='seats'){
         seats=parseInt(r.value)||7;
@@ -1019,9 +1029,8 @@ function renderKPIs(){
 }
 
 function renderHeatmap(){
-  const days=getDays();let html='';
+  const days=getDays().filter(d=>!isWE(d));let html='';
   days.forEach(d=>{
-    if(isWE(d)){html+=`<div class="hcell hc-wknd"><div class="hd">${DN[d.getDay()]}</div><div class="hn">${d.getDate()}</div></div>`;return;}
     const n=S.filter(m=>getSt(m,d)==='office').length;
     const pct=seats>0?n/seats:0;
     const cls=n===0?'hc-empty':n>seats?'hc-over':pct>=1?'hc-full':pct>=0.5?'hc-mid':'hc-low';
@@ -1039,71 +1048,82 @@ function renderSchedule(){
   const gmap={};G.forEach(g=>{gmap[g.id]=[];});gmap['__ug']=[];
   S.forEach(m=>{(gmap[m.group_id]?gmap[m.group_id]:gmap['__ug']).push(m);});
   const order=[...G.map(g=>g.id),...(gmap['__ug'].length?['__ug']:[])];
-  let html='';
+
+  const hcols=wds.map(d=>{
+    const td=isToday(d),holName=holidayMap[dk(d)];
+    const lbl=view==='week'
+      ?`${DN[d.getDay()]}<br><small style="font-weight:400;font-size:10px">${d.getDate()} ${MS[d.getMonth()]}${holName?`<br><span style="color:var(--amber-t);font-size:8px">${esc(holName)}</span>`:''}</small>`
+      :`<small>${d.getDate()}${holName?'*':''}</small>`;
+    return`<th${td?' class="thd"':holName?' style="background:var(--amber-bg)"':''}>${lbl}</th>`;
+  }).join('');
+
+  let bodyHtml='';
+  let firstGroup=true;
   order.forEach(gid=>{
     const members=gmap[gid]||[];if(!members.length)return;
     const grp=G.find(g=>g.id===gid);
     const gname=grp?grp.name:'Unassigned',gcol=grp?grp.color:'#999';
     const open=!collapsed[gid];
-    const hcols=days.map(d=>{
-      const wk=isWE(d),td=isToday(d),holName=holidayMap[dk(d)];
-      const lbl=view==='week'
-        ?`${DN[d.getDay()]}<br><small style="font-weight:400;font-size:10px">${d.getDate()} ${MS[d.getMonth()]}${holName?`<br><span style="color:var(--amber-t);font-size:8px">${esc(holName)}</span>`:''}</small>`
-        :`<small>${d.getDate()}${holName?'*':''}</small>`;
-      return`<th${td?' class="thd"':wk?' style="opacity:.3"':holName?' style="background:var(--amber-bg)"':''}>${lbl}</th>`;
-    }).join('');
-    const mrows=members.map(m=>{
-      const aO=wds.filter(d=>getSt(m,d)==='office').length;
-      const aR=wds.filter(d=>getSt(m,d)==='remote').length;
-      const tO=m.tgt_office!=null?Math.round(m.tgt_office*wip):null;
-      const tR=m.tgt_remote!=null?Math.round(m.tgt_remote*wip):null;
-      function pc(a,t){if(t==null)return'';return a>t?' tp-over':a<t?' tp-under':'';}
-      const dcells=days.map(d=>{
-        if(isWE(d))return'<td><span class="db wknd">—</span></td>';
-        const dkv=dk(d),holName=holidayMap[dkv];
-        if(holName)return`<td style="background:var(--amber-bg)"><div class="day-cell"><span class="db holiday" title="${esc(holName)}">${holName.length>5?holName.slice(0,4)+'…':holName}</span></div></td>`;
-        const st=getSt(m,d),locked=isLocked(m,d);
-        const cls=st?' '+st:'';
-        return`<td><div class="day-cell">
-          <button class="db${cls}${locked?' locked':''}${isToday(d)?' tod':''}" data-mid="${m.id}" data-dk="${dkv}" ${locked?'title="Locked"':''} ${!canEdit?'disabled':''}>${st?SM[st].s:'·'}</button>
-          ${canEdit?`<button class="lock-btn${locked?' on':''}" data-act="toggle-lock" data-mid="${m.id}" data-dk="${dkv}" title="${locked?'Unlock':'Lock'}">${locked?'🔒':'🔓'}</button>`:''}
-        </div></td>`;
-      }).join('');
-      const acts=canEdit?`<td style="white-space:nowrap;padding:0 6px">
-        <button class="btn xs" data-act="edit-staff" data-mid="${m.id}">✏</button>
-        <button class="btn xs dng" data-act="del-staff" data-mid="${m.id}">✕</button>
-      </td>`:`<td></td>`;
-      return`<tr>
-        <td class="nc"><div class="sname">${esc(m.name)}</div><div class="srole">${esc(m.role)}</div>
-          <div class="tpills">
-            <span class="tpill tp-off${pc(aO,tO)}">🏢 ${aO}${tO!=null?'/'+tO:''}d</span>
-            <span class="tpill tp-rem${pc(aR,tR)}">🏠 ${aR}${tR!=null?'/'+tR:''}d</span>
-          </div>
-        </td>${dcells}${acts}
-      </tr>`;
-    }).join('');
-    const cntcells=days.map(d=>{
-      if(isWE(d))return'<td></td>';
-      if(holidayMap[dk(d)])return`<td style="text-align:center;font-size:9px;color:var(--amber-t);background:var(--amber-bg);font-weight:600">Holiday</td>`;
-      const n=members.filter(m=>getSt(m,d)==='office').length;
-      return`<td class="${n>cap?'cnt-ov':n===cap?'cnt-wn':'cnt-ok'}">${n}${n>cap?'⚠':''}/${cap}</td>`;
-    }).join('');
-    html+=`<div class="section-block">
-      <div class="grp-header">
-        <div class="grp-toggle" data-act="toggle-grp" data-gid="${gid}">
+
+    if(!firstGroup)bodyHtml+=`<tr class="grp-spacer"><td colspan="${wds.length+2}"></td></tr>`;
+    firstGroup=false;
+
+    bodyHtml+=`<tr class="grp-row">
+      <td colspan="${wds.length+2}" class="grp-row-cell">
+        <div class="grp-inner" data-act="toggle-grp" data-gid="${gid}">
           <div class="grp-dot" style="background:${gcol}"></div>
           <span class="grp-label">${esc(gname)}</span>
           <span class="grp-pill">${members.length} member${members.length!==1?'s':''}</span>
           <span class="grp-chev">${open?'▲':'▼'}</span>
         </div>
-      </div>
-      ${open?`<div class="table-scroll"><table>
-        <thead><tr><th class="nc">Name &amp; targets</th>${hcols}<th></th></tr></thead>
-        <tbody>${mrows}<tr class="cnt-row"><td class="nc" style="font-size:10.5px;color:var(--text2)">In office / seats</td>${cntcells}<td></td></tr></tbody>
-      </table></div>`:''}
-    </div>`;
+      </td>
+    </tr>`;
+
+    if(open){
+      members.forEach(m=>{
+        const aO=wds.filter(d=>getSt(m,d)==='office').length;
+        const aR=wds.filter(d=>getSt(m,d)==='remote').length;
+        const tO=m.tgt_office!=null?Math.round(m.tgt_office*wip):null;
+        const tR=m.tgt_remote!=null?Math.round(m.tgt_remote*wip):null;
+        function pc(a,t){if(t==null)return'';return a>t?' tp-over':a<t?' tp-under':'';}
+        const dcells=wds.map(d=>{
+          const dkv=dk(d),holName=holidayMap[dkv];
+          if(holName)return`<td style="background:var(--amber-bg)"><div class="day-cell"><span class="db holiday" title="${esc(holName)}">${holName.length>5?holName.slice(0,4)+'…':holName}</span></div></td>`;
+          const st=getSt(m,d),locked=isLocked(m,d);
+          const cls=st?' '+st:'';
+          return`<td><div class="day-cell">
+            <button class="db${cls}${locked?' locked':''}${isToday(d)?' tod':''}" data-mid="${m.id}" data-dk="${dkv}" ${locked?'title="Locked"':''} ${!canEdit?'disabled':''}>${st?SM[st].s:'·'}</button>
+            ${canEdit?`<button class="lock-btn${locked?' on':''}" data-act="toggle-lock" data-mid="${m.id}" data-dk="${dkv}" title="${locked?'Unlock':'Lock'}">${locked?'🔒':'🔓'}</button>`:''}
+          </div></td>`;
+        }).join('');
+        const acts=canEdit?`<td style="white-space:nowrap;padding:0 6px">
+          <button class="btn xs" data-act="edit-staff" data-mid="${m.id}">✏</button>
+          <button class="btn xs dng" data-act="del-staff" data-mid="${m.id}">✕</button>
+        </td>`:`<td></td>`;
+        bodyHtml+=`<tr>
+          <td class="nc"><div class="sname">${esc(m.name)}</div><div class="srole">${esc(m.role)}</div>
+            <div class="tpills">
+              <span class="tpill tp-off${pc(aO,tO)}">🏢 ${aO}${tO!=null?'/'+tO:''}d</span>
+              <span class="tpill tp-rem${pc(aR,tR)}">🏠 ${aR}${tR!=null?'/'+tR:''}d</span>
+            </div>
+          </td>${dcells}${acts}
+        </tr>`;
+      });
+      const cntcells=wds.map(d=>{
+        if(holidayMap[dk(d)])return`<td style="text-align:center;font-size:9px;color:var(--amber-t);background:var(--amber-bg);font-weight:600">Holiday</td>`;
+        const n=members.filter(m=>getSt(m,d)==='office').length;
+        return`<td class="${n>cap?'cnt-ov':n===cap?'cnt-wn':'cnt-ok'}">${n}${n>cap?'⚠':''}/${cap}</td>`;
+      }).join('');
+      bodyHtml+=`<tr class="cnt-row"><td class="nc" style="font-size:10.5px;color:var(--text2)">In office / seats</td>${cntcells}<td></td></tr>`;
+    }
   });
-  document.getElementById('elSchedule').innerHTML=html;
+
+  document.getElementById('elSchedule').innerHTML=`<div class="sched-scroll">
+    <table>
+      <thead><tr><th class="nc">Name &amp; targets</th>${hcols}<th></th></tr></thead>
+      <tbody>${bodyHtml}</tbody>
+    </table>
+  </div>`;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -1579,7 +1599,12 @@ function switchSettingsSection(sec){
 ═══════════════════════════════════════════════════ */
 async function loadHolidays(){
   const{data,error}=await db.from('holidays').select('id,date,name').order('date',{ascending:true});
-  if(error){console.error(error);return;}
+  if(error){
+    console.error(error);
+    const tbody=document.getElementById('holidayTableBody');
+    if(tbody)tbody.innerHTML=`<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--red-t)">Database table "holidays" not found. Run the SQL setup in Supabase to create it.</td></tr>`;
+    return;
+  }
   holidays=data||[];
   holidayMap={};holidays.forEach(h=>{holidayMap[h.date]=h.name;});
   renderHolidays();
