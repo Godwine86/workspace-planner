@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Tell Tailwind v4 to use class-based dark mode (next-themes adds/removes .dark on <html>) */
+@custom-variant dark (&:is(.dark, .dark *));
+
 :root {
   --green:   #2D6A1F;
   --blue:    #1A5FA0;

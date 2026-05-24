@@ -26,6 +26,7 @@ interface Props {
   staff: Staff[]
   groups: Group[]
   seats: number
+  holidayMap: Record<string, string>
 }
 
 function getStatus(
@@ -42,7 +43,7 @@ function getStatus(
   return (staff.pattern?.[dow] as Status | null) ?? null
 }
 
-export function HistoryView({ weeks, staff, groups, seats }: Props) {
+export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) {
   if (!weeks.length) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-12">
@@ -123,10 +124,15 @@ export function HistoryView({ weeks, staff, groups, seats }: Props) {
                         </td>
                         {workDates.map(d => {
                           const dateStr = fmt(d)
+                          const isHoliday = !!holidayMap[dateStr]
                           const st = getStatus(m.id, dateStr, m, entryMap)
                           return (
                             <td key={dateStr} className="px-1 py-2 text-center border-r border-gray-100 dark:border-gray-800 last:border-r-0">
-                              {st ? (
+                              {isHoliday ? (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400">
+                                  HOL
+                                </span>
+                              ) : st ? (
                                 <span className={cn('inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono', STATUS_CLS[st])}>
                                   {STATUS_META[st].short}
                                 </span>
