@@ -1,5 +1,5 @@
 # Codebase Structure Map
-Generated on: Sun May 24 13:30:26 UTC 2026
+Generated on: Sun May 24 14:05:22 UTC 2026
 
 ## File Tree
 ```text
@@ -76,4 +76,5 @@ Generated on: Sun May 24 13:30:26 UTC 2026
 ./graphify-out/cache/stat-index.json
 ./graphify-out/GRAPH_REPORT.md
 ./index-latest.html
+./preview-theme.html
 ```
