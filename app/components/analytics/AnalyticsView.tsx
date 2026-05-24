@@ -15,6 +15,7 @@ interface Props {
   staff: Staff[]
   groups: Group[]
   seats: number
+  holidayMap: Record<string, string>
 }
 
 const RANGE_OPTIONS = [
@@ -24,7 +25,7 @@ const RANGE_OPTIONS = [
   { value: 26, label: 'Last 6 months' },
 ]
 
-export function AnalyticsView({ staff, groups, seats }: Props) {
+export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
   const [range, setRange]       = useState(8)
   const [groupId, setGroupId]   = useState('')
   const [loading, setLoading]   = useState(true)
@@ -60,7 +61,7 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
       })
 
       if (!pubInRange.length) {
-        setData(computeAnalytics([], seats, [], []))
+        setData(computeAnalytics([], seats, [], [], holidayMap))
         setLoading(false)
         return
       }
@@ -79,7 +80,7 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
       if (eErr) throw eErr
 
       const activeStaff = gid ? staff.filter(m => m.group_id === gid) : staff
-      setData(computeAnalytics(activeStaff, seats, pubInRange, entries as { staff_id: string; entry_date: string; status: string }[] ?? []))
+      setData(computeAnalytics(activeStaff, seats, pubInRange, entries as { staff_id: string; entry_date: string; status: string }[] ?? [], holidayMap))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics')
     } finally {
@@ -123,7 +124,7 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
         .from('schedule_entries').select('staff_id,entry_date,status')
         .gte('entry_date', sorted[0].week_start).lte('entry_date', fmt(effEnd))
 
-      const d = computeAnalytics(staff, seats, pubWeeks, entries as { staff_id: string; entry_date: string; status: string }[] ?? [])
+      const d = computeAnalytics(staff, seats, pubWeeks, entries as { staff_id: string; entry_date: string; status: string }[] ?? [], holidayMap)
 
       const hSt = { font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 }, fill: { fgColor: { rgb: '1B5E20' } }, alignment: { horizontal: 'center' } }
       const wb = XLSX.utils.book_new()
