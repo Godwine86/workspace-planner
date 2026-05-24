@@ -297,7 +297,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
       <SyncBadge state={sync.state} message={sync.msg} />
 
       {/* KPIs */}
-      <KPIRow staff={staff} workDays={workDays} seats={initialSeats} cache={cache} />
+      <KPIRow staff={staff} workDays={workDays} seats={initialSeats} cache={cache} holidayMap={holidayMap} />
 
       {/* Heatmap */}
       <Heatmap staff={staff} workDays={workDays} seats={initialSeats} cache={cache} holidayMap={holidayMap} />

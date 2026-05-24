@@ -1,13 +1,14 @@
 import { cn } from '@/lib/utils'
 import type { Staff } from '@/types/database'
 import type { EntryCache } from '@/lib/schedule'
-import { getScheduleStatus, todayDate } from '@/lib/schedule'
+import { getScheduleStatus, todayDate, fmt } from '@/lib/schedule'
 
 interface Props {
   staff: Staff[]
   workDays: Date[]
   seats: number
   cache: EntryCache
+  holidayMap: Record<string, string>
 }
 
 interface KPICardProps {
@@ -24,27 +25,34 @@ function KPICard({ label, children }: KPICardProps) {
   )
 }
 
-export function KPIRow({ staff, workDays, seats, cache }: Props) {
+export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
   const today = todayDate()
 
-  // Today in office
-  const todayOffice = staff.filter(m => getScheduleStatus(m, today, cache) === 'office').length
+  // Today in office (holidays count as 0)
+  const todayIsHoliday = !!holidayMap[fmt(today)]
+  const todayOffice = todayIsHoliday ? 0 : staff.filter(m => getScheduleStatus(m, today, cache) === 'office').length
   const todayPct = seats > 0 ? Math.min(100, Math.round(todayOffice / seats * 100)) : 0
   const todayColor =
     todayOffice > seats ? 'text-red-600 dark:text-red-400' :
     todayOffice >= seats * 0.8 ? 'text-amber-600 dark:text-amber-400' :
     'text-[var(--green)]'
 
-  // Period totals
-  let totalOffice = 0, totalRemote = 0, totalLeave = 0
-  workDays.forEach(d => staff.forEach(m => {
-    const st = getScheduleStatus(m, d, cache)
-    if (st === 'office') totalOffice++
-    else if (st === 'remote') totalRemote++
-    else if (st === 'leave' || st === 'other') totalLeave++
-  }))
+  // Period totals — skip holiday days entirely
+  let totalOffice = 0, totalRemote = 0, totalLeave = 0, totalOther = 0
+  let nonHolidayDays = 0
+  workDays.forEach(d => {
+    if (holidayMap[fmt(d)]) return
+    nonHolidayDays++
+    staff.forEach(m => {
+      const st = getScheduleStatus(m, d, cache)
+      if (st === 'office') totalOffice++
+      else if (st === 'remote') totalRemote++
+      else if (st === 'leave') totalLeave++
+      else if (st === 'other') totalOther++
+    })
+  })
 
-  const avgDaily = workDays.length > 0 ? totalOffice / workDays.length : 0
+  const avgDaily = nonHolidayDays > 0 ? totalOffice / nonHolidayDays : 0
   const utilPct = seats > 0 ? Math.round(avgDaily / seats * 100) : 0
 
   return (
@@ -79,6 +87,10 @@ export function KPIRow({ staff, workDays, seats, cache }: Props) {
 
       <KPICard label="Leave">
         <span className="text-2xl font-semibold text-gray-400">{totalLeave}</span>
+      </KPICard>
+
+      <KPICard label="Other location">
+        <span className="text-2xl font-semibold text-[var(--amber)]">{totalOther}</span>
       </KPICard>
 
       <KPICard label="Seat utilization">
