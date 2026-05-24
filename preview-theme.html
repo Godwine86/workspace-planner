@@ -354,8 +354,64 @@ p  { font-size: 13px; color: #666; margin-bottom: 28px; }
       📐 <strong>Rounder corners</strong> — cards at 18px, table at 20px, buttons at 12px for a softer feel<br>
       🔤 <strong>Tighter typography</strong> — KPI numbers are bolder (800 weight) with tighter letter-spacing
     </div>
+
+    <!-- Dark mode toggle -->
+    <div style="margin-top:14px;display:flex;gap:10px;">
+      <button onclick="setDark(false)" id="btn-light" style="padding:7px 18px;border-radius:9px;border:2px solid #1B2B6B;background:#1B2B6B;color:#fff;font-size:12px;font-weight:700;cursor:pointer">☀️ Light mode</button>
+      <button onclick="setDark(true)"  id="btn-dark"  style="padding:7px 18px;border-radius:9px;border:2px solid #1B2B6B;background:#fff;color:#1B2B6B;font-size:12px;font-weight:700;cursor:pointer">🌙 Dark mode</button>
+    </div>
   </div>
 </div>
+
+<!-- ════════════════ DARK MODE OVERLAY ════════════════ -->
+<style>
+/* Dark mode overrides scoped to #frame-modern.dark */
+#frame-modern.dark .nav               { background:#0a0f1e; border-color:rgba(255,255,255,.06); }
+#frame-modern.dark .nav-brand         { border-color:rgba(255,255,255,.08); color:#6a7aaa; }
+#frame-modern.dark .nav-brand span    { color:#6a7aaa; }
+#frame-modern.dark .nav-tab           { color:#4a5a8a; }
+#frame-modern.dark .tab-active-m      { color:#e0e8ff; }
+#frame-modern.dark .theme-btn         { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.08); }
+
+#frame-modern.dark .body-m            { background:linear-gradient(160deg,#07091a 0%,#0d1230 100%); }
+
+#frame-modern.dark .wk-arrow          { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.08); color:#4a5a8a; }
+#frame-modern.dark .wk-label-m        { background:rgba(255,255,255,.06); color:#c8d4f8; box-shadow:0 2px 12px rgba(0,0,0,.4); }
+#frame-modern.dark .badge-m           { background:linear-gradient(to right,rgba(27,43,107,.6),rgba(41,171,226,.2)); color:#a0b4e8; }
+#frame-modern.dark .pub-m             { box-shadow:0 4px 20px rgba(41,171,226,.25); }
+
+#frame-modern.dark .sync.m-sync       { background:rgba(255,255,255,.04); color:#6a7aaa; }
+#frame-modern.dark .dot-m             { box-shadow:0 0 0 2px rgba(57,181,74,.3); }
+
+#frame-modern.dark .kpi-m             { background:rgba(255,255,255,.05); border-color:rgba(255,255,255,.07); box-shadow:0 4px 20px rgba(0,0,0,.3); }
+#frame-modern.dark .kpi-m:hover       { background:rgba(255,255,255,.08); box-shadow:0 10px 36px rgba(0,0,0,.5); }
+#frame-modern.dark .kpi-label.ml      { color:#4a5a8a; }
+#frame-modern.dark .kpi-value.m-val   { color:#e0e8ff !important; }
+#frame-modern.dark .kpi-m.bar-green .kpi-value.m-val  { color:#5dd96e !important; }
+#frame-modern.dark .kpi-m.bar-cyan  .kpi-value.m-val  { color:#4dc8f0 !important; }
+#frame-modern.dark .kpi-m.bar-orange .kpi-value.m-val { color:#ffaa44 !important; }
+#frame-modern.dark .kpi-m.bar-gray  .kpi-value.m-val  { color:#4a5a8a !important; }
+
+#frame-modern.dark .tbl-wrap.m-tbl              { background:rgba(255,255,255,.04); box-shadow:0 4px 24px rgba(0,0,0,.4); }
+#frame-modern.dark .tbl-wrap.m-tbl thead tr     { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.06); }
+#frame-modern.dark .tbl-wrap.m-tbl th           { color:#3a4a7a; }
+#frame-modern.dark .tbl-wrap.m-tbl td           { border-color:rgba(255,255,255,.05); color:#c0cef8; }
+#frame-modern.dark .tbl-wrap.m-tbl td:first-child { color:#dde6ff; }
+#frame-modern.dark .tbl-wrap.m-tbl tbody tr:hover td { background:rgba(255,255,255,.05); }
+
+#frame-modern.dark .count-m           { background:linear-gradient(to right,rgba(27,43,107,.5),rgba(20,30,80,.3)); }
+#frame-modern.dark .count-m td        { color:#8090c8 !important; }
+
+/* Dark pills — slightly brighter so they pop */
+#frame-modern.dark .m-off { background:rgba(57,181,74,.18); color:#5dd96e; box-shadow:none; }
+#frame-modern.dark .m-rem { background:rgba(41,171,226,.18); color:#4dc8f0; box-shadow:none; }
+#frame-modern.dark .m-lve { background:rgba(100,120,200,.15); color:#7888cc; }
+#frame-modern.dark .m-oth { background:rgba(247,148,29,.18); color:#ffaa44; box-shadow:none; }
+#frame-modern.dark .m-hol { background:rgba(236,0,140,.15); color:#ff60be; }
+
+#frame-modern.dark .note-box { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); color:#8090c8; }
+#frame-modern.dark .note-box strong { color:#c0cef8; }
+</style>
 
 <script>
 function show(name, btn) {
@@ -363,6 +419,14 @@ function show(name, btn) {
   document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('frame-' + name).classList.add('visible')
   btn.classList.add('active')
+}
+function setDark(on) {
+  const f = document.getElementById('frame-modern')
+  f.classList.toggle('dark', on)
+  document.getElementById('btn-light').style.background = on  ? '#fff' : '#1B2B6B'
+  document.getElementById('btn-light').style.color      = on  ? '#1B2B6B' : '#fff'
+  document.getElementById('btn-dark').style.background  = on  ? '#1B2B6B' : '#fff'
+  document.getElementById('btn-dark').style.color       = on  ? '#fff' : '#1B2B6B'
 }
 </script>
 </body>
