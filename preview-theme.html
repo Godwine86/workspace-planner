@@ -7,415 +7,322 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ─── TOKENS ─────────────────────────────────────────── */
-  :root {
-    --font: 'Segoe UI', system-ui, sans-serif;
-
-    /* Current (green) */
-    --cur-primary:   #2D6A1F;
-    --cur-accent:    #1A5FA0;
-    --cur-bg:        #ffffff;
-    --cur-surface:   #f9fafb;
-    --cur-border:    #e5e7eb;
-    --cur-text:      #111827;
-    --cur-sub:       #6b7280;
-
-    /* Qiddiya proposal */
-    --q-primary:     #5B2D8E;   /* Qiddiya purple  */
-    --q-accent:      #FFD100;   /* Qiddiya yellow  */
-    --q-accent2:     #E8450A;   /* energetic orange */
-    --q-bg:          #ffffff;
-    --q-surface:     #f8f7fc;
-    --q-border:      #e8e2f0;
-    --q-text:        #1a0a2e;
-    --q-sub:         #7c6a9a;
-  }
-
-  body { font-family: var(--font); background: #f0edf5; padding: 32px; color: #111; }
-  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #1a0a2e; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f8; padding: 32px; color: #111; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #1B2B6B; }
   p  { font-size: 13px; color: #555; margin-bottom: 32px; }
 
-  /* switcher */
-  .switcher { display: flex; gap: 12px; margin-bottom: 36px; }
+  /* ─── switcher ─── */
+  .switcher { display: flex; gap: 12px; margin-bottom: 36px; flex-wrap: wrap; }
   .sw-btn {
-    padding: 8px 20px; border-radius: 8px; border: 2px solid transparent;
+    padding: 8px 20px; border-radius: 8px; border: 2px solid #1B2B6B;
     font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
+    background: #fff; color: #1B2B6B;
   }
-  .sw-btn.active { background: #5B2D8E; color: #fff; border-color: #5B2D8E; }
-  .sw-btn:not(.active) { background: #fff; color: #5B2D8E; border-color: #5B2D8E; }
+  .sw-btn.active { background: #1B2B6B; color: #fff; }
 
-  /* layout frames */
-  .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 32px rgba(0,0,0,.10); display: none; }
+  /* ─── frame ─── */
+  .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 32px rgba(0,0,0,.12); display: none; }
   .frame.visible { display: block; }
 
-  /* ─── NAV ─────────────────────────────────────────────── */
+  /* ─── NAV ─── */
   .nav {
     display: flex; align-items: center; gap: 0; padding: 0 24px;
-    height: 52px; border-bottom: 1px solid var(--bd);
-    background: var(--bg); position: relative;
+    height: 54px; background: #fff; border-bottom: 1px solid #e5e7eb;
+    position: relative;
   }
-  .nav::after {
+
+  /* Current: solid green stripe */
+  .nav.stripe-green::after {
     content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-    background: var(--stripe);
+    background: rgba(45,106,31,0.4);
   }
+
+  /* Qiddiya: full rainbow gradient stripe */
+  .nav.stripe-rainbow::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: linear-gradient(to right,
+      #29ABE2,  /* cyan */
+      #8DC63F,  /* lime */
+      #39B54A,  /* green */
+      #C8D92A,  /* yellow-green */
+      #FBB03B,  /* yellow */
+      #F7941D,  /* orange */
+      #F15A24,  /* red-orange */
+      #EC008C   /* pink */
+    );
+  }
+
   .nav-brand {
     display: flex; align-items: center; gap: 8px;
-    padding-right: 20px; border-right: 1px solid var(--bd); margin-right: 16px;
-    font-size: 13.5px; font-weight: 500; color: var(--sub); white-space: nowrap;
+    padding-right: 20px; border-right: 1px solid #e5e7eb; margin-right: 16px;
+    font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; flex-shrink: 0;
   }
-  .nav-logo {
-    width: 28px; height: 28px; border-radius: 6px;
-    background: var(--primary); display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 800; color: var(--logo-text); letter-spacing: -.3px;
-    flex-shrink: 0;
+  .nav-logo-green {
+    width: 28px; height: 28px; border-radius: 6px; background: #2D6A1F;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0;
   }
+  /* Qiddiya logo: navy with rainbow underline */
+  .nav-logo-q {
+    width: 32px; height: 32px; border-radius: 7px; background: #1B2B6B;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0;
+    position: relative; overflow: hidden;
+  }
+  .nav-logo-q::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
+  }
+
   .nav-tabs { display: flex; gap: 2px; flex: 1; }
   .nav-tab {
     position: relative; display: flex; align-items: center; gap: 5px;
     padding: 6px 14px; border-radius: 6px; font-size: 13px;
-    color: var(--sub); cursor: pointer; transition: all .15s;
+    color: #6b7280; cursor: pointer; transition: all .15s;
   }
-  .nav-tab.active { font-weight: 600; color: var(--primary); }
-  .nav-tab.active::after {
-    content: ''; position: absolute; left: 6px; right: 6px; bottom: -13px; height: 2px;
-    border-radius: 2px 2px 0 0; background: var(--primary);
+  .nav-tab.active-green { font-weight: 600; color: #2D6A1F; }
+  .nav-tab.active-green::after {
+    content: ''; position: absolute; left: 6px; right: 6px; bottom: -14px; height: 2px;
+    border-radius: 2px 2px 0 0; background: #2D6A1F;
   }
+  .nav-tab.active-navy { font-weight: 700; color: #1B2B6B; }
+  .nav-tab.active-navy::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -14px; height: 3px;
+    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
+  }
+
   .nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-  .avatar {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--primary); color: var(--logo-text);
-    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
-  }
-  .theme-btn {
-    width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--bd);
-    background: var(--surface); display: flex; align-items: center; justify-content: center;
-    font-size: 14px; cursor: pointer;
-  }
+  .avatar-green { width: 30px; height: 30px; border-radius: 50%; background: #2D6A1F; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .avatar-navy  { width: 30px; height: 30px; border-radius: 50%; background: #1B2B6B; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .theme-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 
-  /* ─── BODY AREA ────────────────────────────────────────── */
-  .body-area { background: var(--surface); padding: 24px; }
-
-  /* KPI row */
-  .kpi-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-  .kpi-card {
-    background: var(--bg); border: 1px solid var(--bd); border-radius: 14px;
-    padding: 16px 20px; min-width: 130px; flex: 1;
-    transition: box-shadow .2s, transform .2s;
-  }
-  .kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); transform: translateY(-2px); }
-  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--sub); font-weight: 600; margin-bottom: 6px; }
-  .kpi-value { font-size: 26px; font-weight: 700; }
-  .kpi-value.green  { color: var(--primary); }
-  .kpi-value.yellow { color: var(--accent); }
-  .kpi-value.blue   { color: #1A5FA0; }
-  .kpi-value.orange { color: var(--accent2); }
-  .kpi-value.gray   { color: var(--sub); }
+  /* ─── BODY ─── */
+  .body-area { background: #f9fafb; padding: 24px; }
+  .body-area.q-bg { background: #f0f3fb; }
 
   /* week header */
-  .week-header {
-    display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-  }
-  .week-nav {
-    background: var(--bg); border: 1px solid var(--bd); border-radius: 8px;
-    padding: 5px 10px; font-size: 13px; font-weight: 600; color: var(--text);
-    display: flex; align-items: center; gap: 6px;
-  }
-  .week-arrow {
-    width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--bd);
-    background: var(--bg); display: flex; align-items: center; justify-content: center;
-    font-size: 12px; cursor: pointer; color: var(--sub);
-  }
-  .badge {
-    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
-    background: var(--badge-bg); color: var(--badge-text); border: 1px solid var(--badge-bd);
-  }
-
-  /* table */
-  .sched-table { background: var(--bg); border: 1px solid var(--bd); border-radius: 14px; overflow: hidden; }
-  .sched-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .sched-table thead tr { background: var(--surface); border-bottom: 1px solid var(--bd); }
-  .sched-table th { padding: 10px 12px; text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--sub); }
-  .sched-table th:first-child { text-align: left; }
-  .sched-table td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--bd); color: var(--text); }
-  .sched-table td:first-child { text-align: left; font-weight: 600; }
-  .sched-table tr:last-child td { border-bottom: none; }
-  .sched-table tr:hover td { background: var(--surface); transition: background .1s; }
-
-  .pill {
-    display: inline-block; padding: 2px 7px; border-radius: 5px;
-    font-size: 10px; font-weight: 700; font-family: monospace;
-  }
-  .pill-off { background: #dcfce7; color: #166534; }
-  .pill-rem { background: #dbeafe; color: #1e40af; }
-  .pill-lve { background: #f3f4f6; color: #6b7280; }
-  .pill-oth { background: #fef3c7; color: #92400e; }
-  .pill-hol { background: #fef3c7; color: #b45309; }
+  .week-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .week-arrow { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6b7280; cursor: pointer; }
+  .week-label { padding: 5px 12px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; color: #111827; }
+  .badge-draft-g { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+  .badge-draft-q { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #e8edf8; color: #1B2B6B; border: 1px solid #c5d0ea; }
+  .pub-btn-g { padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: #2D6A1F; color: #fff; margin-left: auto; }
+  .pub-btn-q { padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; background: #1B2B6B; color: #fff; margin-left: auto; }
 
   /* sync bar */
-  .sync-bar {
-    display: flex; align-items: center; gap: 8px;
-    padding: 8px 14px; background: var(--bg); border: 1px solid var(--bd);
-    border-radius: 10px; font-size: 12px; color: var(--sub); margin-bottom: 16px;
-  }
-  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); }
+  .sync-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 12px; color: #6b7280; margin-bottom: 16px; }
 
-  /* publish btn */
-  .pub-btn {
-    padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer;
-    font-size: 13px; font-weight: 600; background: var(--primary); color: var(--logo-text);
-    transition: opacity .15s, transform .15s;
-  }
-  .pub-btn:hover { opacity: .9; transform: translateY(-1px); }
+  /* KPI cards */
+  .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+  .kpi-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px 18px; min-width: 110px; flex: 1; transition: box-shadow .2s, transform .15s; }
+  .kpi-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.09); transform: translateY(-2px); }
+  .kpi-card.q-card { border-color: #d0d8ef; }
+  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; font-weight: 600; margin-bottom: 6px; }
+  .kpi-label.q-lbl { color: #7a88b8; }
+  .kpi-value { font-size: 26px; font-weight: 700; }
 
-  /* color swatch row */
-  .swatches { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .swatch {
-    display: flex; flex-direction: column; align-items: center; gap: 4px;
-  }
-  .swatch-box { width: 48px; height: 48px; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); }
+  /* table */
+  .sched-table { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; }
+  .sched-table.q-tbl { border-color: #d0d8ef; }
+  .sched-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .sched-table thead tr { background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
+  .sched-table.q-tbl thead tr { background: #edf0f9; border-bottom-color: #d0d8ef; }
+  .sched-table th { padding: 10px 12px; text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; }
+  .sched-table.q-tbl th { color: #7a88b8; }
+  .sched-table th:first-child { text-align: left; }
+  .sched-table td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #f3f4f6; color: #111827; }
+  .sched-table.q-tbl td { border-bottom-color: #e8edf8; color: #1B2B6B; }
+  .sched-table td:first-child { text-align: left; font-weight: 600; }
+  .sched-table tr:last-child td { border-bottom: none; }
+
+  /* ─── STATUS PILLS ─── */
+  /* Current */
+  .g-off { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#dcfce7;color:#166534; }
+  .g-rem { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#dbeafe;color:#1e40af; }
+  .g-lve { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#f3f4f6;color:#6b7280; }
+  .g-oth { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fef3c7;color:#92400e; }
+  .g-hol { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fef3c7;color:#b45309; }
+
+  /* Qiddiya — pills pull from the logo's color spectrum */
+  .q-off { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#d6f0e0;color:#1a6b3a; }  /* green bar */
+  .q-rem { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#cceeff;color:#005f8a; }  /* cyan bar */
+  .q-lve { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#e8edf8;color:#5a6a9a; }  /* navy muted */
+  .q-oth { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#ffe8cc;color:#b85a00; }  /* orange bar */
+  .q-hol { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fce4f0;color:#b0006a; }  /* pink bar */
+
+  /* count row */
+  .count-g { background:#f9fafb;font-weight:700;font-size:11px; }
+  .count-q { background:#edf0f9;font-weight:700;font-size:11px; }
+
+  /* swatches */
+  .swatches { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .swatch-box { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); }
   .swatch-label { font-size: 9px; font-weight: 600; color: #555; text-align: center; }
-  .swatch-hex { font-size: 8.5px; color: #999; font-family: monospace; }
+  .swatch-hex   { font-size: 8.5px; color: #999; font-family: monospace; }
 
-  /* ─── CURRENT THEME VARS ─────────────── */
-  .theme-current {
-    --primary:    #2D6A1F;
-    --accent:     #1A5FA0;
-    --accent2:    #F59E0B;
-    --bg:         #ffffff;
-    --surface:    #f9fafb;
-    --bd:         #e5e7eb;
-    --text:       #111827;
-    --sub:        #6b7280;
-    --stripe:     rgba(45,106,31,0.4);
-    --logo-text:  #ffffff;
-    --badge-bg:   #f0fdf4;
-    --badge-text: #166534;
-    --badge-bd:   #bbf7d0;
+  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin-top: 18px; margin-bottom: 10px; }
+
+  /* label chip */
+  .theme-chip { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; margin: 14px 0 14px 16px; }
+  .chip-g { background: #dcfce7; color: #166534; }
+  .chip-q { background: #e8edf8; color: #1B2B6B; }
+
+  /* rainbow logo preview */
+  .q-logo-large {
+    width: 48px; height: 48px; border-radius: 10px; background: #1B2B6B;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #fff; position: relative; overflow: hidden; flex-shrink: 0;
   }
-
-  /* ─── QIDDIYA THEME VARS ─────────────── */
-  .theme-qiddiya {
-    --primary:    #5B2D8E;
-    --accent:     #FFD100;
-    --accent2:    #E8450A;
-    --bg:         #ffffff;
-    --surface:    #f8f6fc;
-    --bd:         #e8e0f0;
-    --text:       #1a0a2e;
-    --sub:        #7c6a9a;
-    --stripe:     #FFD100;
-    --logo-text:  #FFD100;
-    --badge-bg:   #f3eeff;
-    --badge-text: #5B2D8E;
-    --badge-bd:   #d8c4f5;
+  .q-logo-large::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
   }
-
-  .theme-qiddiya .kpi-value.green  { color: #5B2D8E; }
-  .theme-qiddiya .kpi-value.yellow { color: #E8450A; }
-  .theme-qiddiya .kpi-value.blue   { color: #5B2D8E; }
-  .theme-qiddiya .pill-off { background: #ede8ff; color: #5B2D8E; }
-  .theme-qiddiya .pill-rem { background: #fff8d6; color: #856000; }
-
-  /* animated transition */
-  .frame * { transition: background-color .3s, color .3s, border-color .3s; }
-
-  /* label */
-  .theme-label {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
-    padding: 4px 10px; border-radius: 20px; display: inline-block; margin-bottom: 16px;
-  }
-  .label-current  { background: #dcfce7; color: #166534; }
-  .label-qiddiya  { background: #ede8ff; color: #5B2D8E; }
-
-  .section-title { font-size: 13px; font-weight: 700; color: #333; margin-bottom: 12px; }
 </style>
 </head>
 <body>
 
 <h1>CDU Workspace Planner — Theme Preview</h1>
-<p>Toggle between the current green theme and the Qiddiya-inspired purple/gold theme. No app changes have been made yet.</p>
+<p>Extracted directly from the Qiddiya logo. Toggle to compare. <strong>Nothing in the app has changed yet.</strong></p>
 
 <div class="switcher">
-  <button class="sw-btn active" onclick="showTheme('current', this)">Current (Green)</button>
-  <button class="sw-btn"       onclick="showTheme('qiddiya', this)">Qiddiya Purple / Gold</button>
+  <button class="sw-btn active" onclick="show('current',this)">Current (Green)</button>
+  <button class="sw-btn"        onclick="show('qiddiya',this)">Qiddiya — Navy + Spectrum</button>
 </div>
 
-<!-- ══ CURRENT ══════════════════════════════════════════════════ -->
-<div class="frame theme-current visible" id="frame-current">
-  <span class="theme-label label-current" style="margin:16px 0 0 16px;display:block">Current theme</span>
+<!-- ══════════ CURRENT ══════════ -->
+<div class="frame visible" id="frame-current">
+  <div class="theme-chip chip-g">Current theme</div>
 
-  <!-- Nav -->
-  <div class="nav">
+  <div class="nav stripe-green">
     <div class="nav-brand">
-      <div class="nav-logo">CDU</div>
+      <div class="nav-logo-green">CDU</div>
       Workspace Planner
     </div>
     <div class="nav-tabs">
-      <div class="nav-tab active">📅 Schedule</div>
+      <div class="nav-tab active-green">📅 Schedule</div>
       <div class="nav-tab">📊 Analytics</div>
       <div class="nav-tab">🕐 History</div>
       <div class="nav-tab">⚙️ Settings</div>
     </div>
     <div class="nav-right">
       <div class="theme-btn">☀️</div>
-      <div class="avatar">D</div>
+      <div class="avatar-green">D</div>
     </div>
   </div>
 
-  <!-- Body -->
   <div class="body-area">
     <div class="week-header">
       <div class="week-arrow">‹</div>
-      <div class="week-nav">Jun 7 – Jun 13, 2026</div>
+      <div class="week-label">Jun 7 – Jun 13, 2026</div>
       <div class="week-arrow">›</div>
-      <div class="badge">● Draft</div>
-      <button class="pub-btn" style="margin-left:auto">Publish week</button>
+      <div class="badge-draft-g">● Draft</div>
+      <button class="pub-btn-g">Publish week</button>
     </div>
-
-    <div class="sync-bar">
-      <div class="sync-dot"></div>
-      All changes save automatically
-    </div>
+    <div class="sync-bar"><span style="width:7px;height:7px;border-radius:50%;background:#2D6A1F;display:inline-block"></span> All changes save automatically</div>
 
     <div class="kpi-row">
-      <div class="kpi-card"><div class="kpi-label">Available seats</div><div class="kpi-value green">7</div></div>
-      <div class="kpi-card"><div class="kpi-label">Today in office</div><div class="kpi-value green">5 / 7</div></div>
-      <div class="kpi-card"><div class="kpi-label">In office (period)</div><div class="kpi-value green">35</div></div>
-      <div class="kpi-card"><div class="kpi-label">Remote (period)</div><div class="kpi-value blue">35</div></div>
-      <div class="kpi-card"><div class="kpi-label">Leave</div><div class="kpi-value gray">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Other location</div><div class="kpi-value yellow">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Seat utilization</div><div class="kpi-value green">100%</div></div>
+      <div class="kpi-card"><div class="kpi-label">Available seats</div><div class="kpi-value" style="color:#2D6A1F">7</div></div>
+      <div class="kpi-card"><div class="kpi-label">Today in office</div><div class="kpi-value" style="color:#2D6A1F">5 / 7</div></div>
+      <div class="kpi-card"><div class="kpi-label">In office (period)</div><div class="kpi-value" style="color:#2D6A1F">35</div></div>
+      <div class="kpi-card"><div class="kpi-label">Remote (period)</div><div class="kpi-value" style="color:#1A5FA0">35</div></div>
+      <div class="kpi-card"><div class="kpi-label">Leave</div><div class="kpi-value" style="color:#9ca3af">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Other location</div><div class="kpi-value" style="color:#8A5009">0</div></div>
+      <div class="kpi-card"><div class="kpi-label">Seat utilization</div><div class="kpi-value" style="color:#2D6A1F">100%</div></div>
     </div>
 
     <div class="sched-table">
       <table>
-        <thead>
-          <tr>
-            <th>Staff</th>
-            <th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Staff</th><th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th></tr></thead>
         <tbody>
-          <tr><td>Emma Jones <span style="font-size:10px;color:#9ca3af">Lead</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-rem">REM</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-lve">LVE</span></td><td><span class="pill pill-rem">REM</span></td></tr>
-          <tr><td>Zaina Khan <span style="font-size:10px;color:#9ca3af">Head</span></td><td><span class="pill pill-rem">REM</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-rem">REM</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-off">OFF</span></td></tr>
-          <tr><td>Eman Mushayt <span style="font-size:10px;color:#9ca3af">AM</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-off">OFF</span></td><td><span class="pill pill-oth">OTH</span></td><td><span class="pill pill-rem">REM</span></td><td><span class="pill pill-off">OFF</span></td></tr>
-          <tr style="background:#f9fafb;font-weight:700;font-size:11px"><td style="color:#6b7280">In office</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td></tr>
+          <tr><td>Emma Jones <span style="font-size:10px;color:#9ca3af">Lead</span></td><td><span class="g-off">OFF</span></td><td><span class="g-rem">REM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-lve">LVE</span></td><td><span class="g-rem">REM</span></td></tr>
+          <tr><td>Zaina Khan <span style="font-size:10px;color:#9ca3af">Head</span></td><td><span class="g-rem">REM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-hol">HOL</span></td><td><span class="g-off">OFF</span></td><td><span class="g-off">OFF</span></td></tr>
+          <tr><td>Eman Mushayt <span style="font-size:10px;color:#9ca3af">AM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-off">OFF</span></td><td><span class="g-hol">HOL</span></td><td><span class="g-oth">OTH</span></td><td><span class="g-off">OFF</span></td></tr>
+          <tr class="count-g"><td style="color:#6b7280;padding:10px 12px">In office</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#F59E0B">HOL</td><td style="color:#2D6A1F">6/7</td><td style="color:#2D6A1F">7/7</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="section-title" style="margin-top:16px">Color palette</div>
+    <div class="section-title">Color palette</div>
     <div class="swatches">
       <div class="swatch"><div class="swatch-box" style="background:#2D6A1F"></div><div class="swatch-label">Primary</div><div class="swatch-hex">#2D6A1F</div></div>
       <div class="swatch"><div class="swatch-box" style="background:#1A5FA0"></div><div class="swatch-label">Blue</div><div class="swatch-hex">#1A5FA0</div></div>
       <div class="swatch"><div class="swatch-box" style="background:#8A5009"></div><div class="swatch-label">Amber</div><div class="swatch-hex">#8A5009</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#f9fafb;border:1px solid #e5e7eb"></div><div class="swatch-label">Surface</div><div class="swatch-hex">#F9FAFB</div></div>
     </div>
   </div>
 </div>
 
-<!-- ══ QIDDIYA ══════════════════════════════════════════════════ -->
-<div class="frame theme-qiddiya" id="frame-qiddiya">
-  <span class="theme-label label-qiddiya" style="margin:16px 0 0 16px;display:block">Qiddiya theme — Purple / Gold</span>
+<!-- ══════════ QIDDIYA ══════════ -->
+<div class="frame" id="frame-qiddiya">
+  <div class="theme-chip chip-q">Qiddiya theme — extracted from logo</div>
 
-  <!-- Nav -->
-  <div class="nav">
-    <div class="nav-brand">
-      <div class="nav-logo" style="background:#5B2D8E;color:#FFD100;font-size:9px;font-weight:800">CDU</div>
+  <div class="nav stripe-rainbow">
+    <div class="nav-brand" style="border-color:#d0d8ef;color:#7a88b8">
+      <div class="nav-logo-q">CDU</div>
       Workspace Planner
     </div>
     <div class="nav-tabs">
-      <div class="nav-tab active" style="color:#5B2D8E;font-weight:700">📅 Schedule</div>
+      <div class="nav-tab active-navy">📅 Schedule</div>
       <div class="nav-tab">📊 Analytics</div>
       <div class="nav-tab">🕐 History</div>
       <div class="nav-tab">⚙️ Settings</div>
     </div>
     <div class="nav-right">
-      <div class="theme-btn" style="border-color:#e8e0f0">☀️</div>
-      <div class="avatar" style="background:#5B2D8E;color:#FFD100">D</div>
+      <div class="theme-btn" style="border-color:#d0d8ef">☀️</div>
+      <div class="avatar-navy">D</div>
     </div>
   </div>
 
-  <!-- Body -->
-  <div class="body-area" style="background:#f8f6fc">
+  <div class="body-area q-bg">
     <div class="week-header">
-      <div class="week-arrow" style="border-color:#e8e0f0;color:#7c6a9a">‹</div>
-      <div class="week-nav" style="border-color:#e8e0f0;color:#1a0a2e">Jun 7 – Jun 13, 2026</div>
-      <div class="week-arrow" style="border-color:#e8e0f0;color:#7c6a9a">›</div>
-      <div class="badge" style="background:#f3eeff;color:#5B2D8E;border-color:#d8c4f5">● Draft</div>
-      <button class="pub-btn" style="margin-left:auto;background:#5B2D8E;color:#FFD100">Publish week</button>
+      <div class="week-arrow" style="border-color:#d0d8ef;color:#7a88b8">‹</div>
+      <div class="week-label" style="border-color:#d0d8ef;color:#1B2B6B">Jun 7 – Jun 13, 2026</div>
+      <div class="week-arrow" style="border-color:#d0d8ef;color:#7a88b8">›</div>
+      <div class="badge-draft-q">● Draft</div>
+      <button class="pub-btn-q">Publish week</button>
     </div>
-
-    <div class="sync-bar" style="border-color:#e8e0f0">
-      <div class="sync-dot" style="background:#5B2D8E"></div>
-      All changes save automatically
-    </div>
+    <div class="sync-bar" style="border-color:#d0d8ef"><span style="width:7px;height:7px;border-radius:50%;background:#39B54A;display:inline-block"></span> All changes save automatically</div>
 
     <div class="kpi-row">
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Available seats</div><div class="kpi-value" style="color:#5B2D8E">7</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Today in office</div><div class="kpi-value" style="color:#5B2D8E">5 / 7</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">In office (period)</div><div class="kpi-value" style="color:#5B2D8E">35</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Remote (period)</div><div class="kpi-value" style="color:#7c6a9a">35</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Leave</div><div class="kpi-value" style="color:#b0a0c8">0</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Other location</div><div class="kpi-value" style="color:#E8450A">0</div></div>
-      <div class="kpi-card" style="border-color:#e8e0f0"><div class="kpi-label" style="color:#7c6a9a">Seat utilization</div><div class="kpi-value" style="color:#5B2D8E">100%</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Available seats</div><div class="kpi-value" style="color:#1B2B6B">7</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Today in office</div><div class="kpi-value" style="color:#39B54A">5 / 7</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">In office (period)</div><div class="kpi-value" style="color:#39B54A">35</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Remote (period)</div><div class="kpi-value" style="color:#29ABE2">35</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Leave</div><div class="kpi-value" style="color:#b0bcd8">0</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Other location</div><div class="kpi-value" style="color:#F7941D">0</div></div>
+      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Seat utilization</div><div class="kpi-value" style="color:#1B2B6B">100%</div></div>
     </div>
 
-    <div class="sched-table" style="border-color:#e8e0f0">
+    <div class="sched-table q-tbl">
       <table>
-        <thead>
-          <tr style="background:#f3eeff">
-            <th style="color:#7c6a9a">Staff</th>
-            <th style="color:#7c6a9a">Sun 7</th><th style="color:#7c6a9a">Mon 8</th><th style="color:#7c6a9a">Tue 9</th><th style="color:#7c6a9a">Wed 10</th><th style="color:#7c6a9a">Thu 11</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Staff</th><th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th></tr></thead>
         <tbody>
-          <tr>
-            <td style="color:#1a0a2e">Emma Jones <span style="font-size:10px;color:#b0a0c8">Lead</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#fff8d6;color:#856000">REM</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#f3f0f8;color:#9b8ab8">LVE</span></td>
-            <td><span class="pill" style="background:#fff8d6;color:#856000">REM</span></td>
-          </tr>
-          <tr>
-            <td style="color:#1a0a2e">Zaina Khan <span style="font-size:10px;color:#b0a0c8">Head</span></td>
-            <td><span class="pill" style="background:#fff8d6;color:#856000">REM</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#fff8d6;color:#856000">REM</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-          </tr>
-          <tr>
-            <td style="color:#1a0a2e">Eman Mushayt <span style="font-size:10px;color:#b0a0c8">AM</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-            <td><span class="pill" style="background:#fef3c7;color:#92400e">OTH</span></td>
-            <td><span class="pill" style="background:#fff8d6;color:#856000">REM</span></td>
-            <td><span class="pill" style="background:#ede8ff;color:#5B2D8E">OFF</span></td>
-          </tr>
-          <tr style="background:#f3eeff;font-weight:700;font-size:11px">
-            <td style="color:#7c6a9a">In office</td>
-            <td style="color:#5B2D8E">7/7</td><td style="color:#5B2D8E">7/7</td>
-            <td style="color:#5B2D8E">7/7</td><td style="color:#5B2D8E">7/7</td><td style="color:#5B2D8E">7/7</td>
-          </tr>
+          <tr><td>Emma Jones <span style="font-size:10px;color:#7a88b8">Lead</span></td><td><span class="q-off">OFF</span></td><td><span class="q-rem">REM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-lve">LVE</span></td><td><span class="q-rem">REM</span></td></tr>
+          <tr><td>Zaina Khan <span style="font-size:10px;color:#7a88b8">Head</span></td><td><span class="q-rem">REM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-hol">HOL</span></td><td><span class="q-off">OFF</span></td><td><span class="q-off">OFF</span></td></tr>
+          <tr><td>Eman Mushayt <span style="font-size:10px;color:#7a88b8">AM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-off">OFF</span></td><td><span class="q-hol">HOL</span></td><td><span class="q-oth">OTH</span></td><td><span class="q-off">OFF</span></td></tr>
+          <tr class="count-q"><td style="color:#7a88b8;padding:10px 12px">In office</td><td style="color:#1B2B6B">7/7</td><td style="color:#1B2B6B">7/7</td><td style="color:#EC008C">HOL</td><td style="color:#1B2B6B">6/7</td><td style="color:#1B2B6B">7/7</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="section-title" style="margin-top:16px;color:#1a0a2e">Proposed color palette</div>
+    <div class="section-title" style="color:#7a88b8">Color palette — from Qiddiya logo</div>
     <div class="swatches">
-      <div class="swatch"><div class="swatch-box" style="background:#5B2D8E"></div><div class="swatch-label">Primary</div><div class="swatch-hex">#5B2D8E</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#FFD100"></div><div class="swatch-label">Gold</div><div class="swatch-hex">#FFD100</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#E8450A"></div><div class="swatch-label">Orange</div><div class="swatch-hex">#E8450A</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#f8f6fc;border:1px solid #e8e0f0"></div><div class="swatch-label">Surface</div><div class="swatch-hex">#F8F6FC</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#1a0a2e"></div><div class="swatch-label">Text</div><div class="swatch-hex">#1A0A2E</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#1B2B6B"></div><div class="swatch-label">Navy (text)</div><div class="swatch-hex">#1B2B6B</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#29ABE2"></div><div class="swatch-label">Cyan</div><div class="swatch-hex">#29ABE2</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#39B54A"></div><div class="swatch-label">Green</div><div class="swatch-hex">#39B54A</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#FBB03B"></div><div class="swatch-label">Yellow</div><div class="swatch-hex">#FBB03B</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#F7941D"></div><div class="swatch-label">Orange</div><div class="swatch-hex">#F7941D</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#EC008C"></div><div class="swatch-label">Pink</div><div class="swatch-hex">#EC008C</div></div>
+    </div>
+
+    <div style="margin-top:16px;padding:12px 14px;background:#fff;border:1px solid #d0d8ef;border-radius:10px;font-size:12px;color:#1B2B6B">
+      <strong>Design concept:</strong> Navy as the authoritative base color (matches the Qiddiya wordmark). The rainbow spectrum from the logo arch appears as the active tab underline and nav bottom stripe — a subtle nod to Qiddiya without being garish. Status pills borrow from the spectrum: Office=green, Remote=cyan, Other=orange, Holiday=pink.
     </div>
   </div>
 </div>
 
 <script>
-function showTheme(name, btn) {
+function show(name, btn) {
   document.querySelectorAll('.frame').forEach(f => f.classList.remove('visible'))
   document.querySelectorAll('.sw-btn').forEach(b => b.classList.remove('active'))
   document.getElementById('frame-' + name).classList.add('visible')
