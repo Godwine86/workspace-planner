@@ -17,6 +17,14 @@ const dmMono = DM_Mono({
 export const metadata: Metadata = {
   title: 'CDU Workspace Planner',
   description: 'Hybrid office scheduling and analytics',
+  icons: {
+    icon: [
+      {
+        url: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'><rect width='28' height='28' rx='6' fill='%232D6A1F'/><text x='14' y='20' text-anchor='middle' font-family='Arial,sans-serif' font-weight='700' font-size='11' fill='white' letter-spacing='-0.5'>CDU</text></svg>",
+        type: 'image/svg+xml',
+      },
+    ],
+  },
 }
 
 export default function RootLayout({

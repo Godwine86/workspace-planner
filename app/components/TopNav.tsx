@@ -31,9 +31,12 @@ export function TopNav({ name, email, role }: Props) {
     <nav className="sticky top-0 z-50 h-[52px] flex items-center gap-0 px-7 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800" style={{ boxShadow: 'inset 0 -2px 0 -1px rgba(45,106,31,0.4)' }}>
       {/* Brand */}
       <div className="flex items-center gap-2 pr-5 border-r border-gray-200 dark:border-gray-800 mr-4 shrink-0">
-        <span className="w-2 h-2 rounded-full bg-[var(--green)]" />
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="28" height="28" rx="6" fill="var(--green)" />
+          <text x="14" y="20" textAnchor="middle" fontFamily="DM Sans, Arial, sans-serif" fontWeight="700" fontSize="11" fill="white" letterSpacing="-0.5">CDU</text>
+        </svg>
         <span className="text-[13.5px] font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
-          CDU Workspace Planner
+          Workspace Planner
         </span>
       </div>
 
