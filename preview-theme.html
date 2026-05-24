@@ -5,318 +5,354 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>CDU Workspace Planner — Theme Preview</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* ─── RESET ─────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #e8eaf0; padding: 32px; }
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #1B2B6B; }
+p  { font-size: 13px; color: #666; margin-bottom: 28px; }
 
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f8; padding: 32px; color: #111; }
-  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; color: #1B2B6B; }
-  p  { font-size: 13px; color: #555; margin-bottom: 32px; }
+/* ─── SWITCHER ───────────────────────────────────── */
+.switcher { display: flex; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+.sw-btn {
+  padding: 9px 22px; border-radius: 10px; border: 2px solid #1B2B6B;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  background: #fff; color: #1B2B6B; transition: all .2s;
+}
+.sw-btn.active { background: #1B2B6B; color: #fff; }
+.sw-btn:hover:not(.active) { background: #f0f3fb; }
 
-  /* ─── switcher ─── */
-  .switcher { display: flex; gap: 12px; margin-bottom: 36px; flex-wrap: wrap; }
-  .sw-btn {
-    padding: 8px 20px; border-radius: 8px; border: 2px solid #1B2B6B;
-    font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
-    background: #fff; color: #1B2B6B;
-  }
-  .sw-btn.active { background: #1B2B6B; color: #fff; }
+/* ─── FRAME ──────────────────────────────────────── */
+.frame { border-radius: 18px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,.13); display: none; }
+.frame.visible { display: block; }
 
-  /* ─── frame ─── */
-  .frame { border-radius: 16px; overflow: hidden; box-shadow: 0 4px 32px rgba(0,0,0,.12); display: none; }
-  .frame.visible { display: block; }
+/* ══════════════════════════════════════════════════
+   SHARED NAV STRUCTURE
+══════════════════════════════════════════════════ */
+.nav {
+  display: flex; align-items: center; padding: 0 24px;
+  height: 54px; background: #fff; border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+.nav-brand { display: flex; align-items: center; gap: 9px; padding-right: 20px; border-right: 1px solid #e5e7eb; margin-right: 16px; flex-shrink: 0; }
+.nav-tabs { display: flex; gap: 2px; flex: 1; }
+.nav-tab { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; font-size: 13px; color: #6b7280; cursor: pointer; }
+.nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.theme-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 14px; }
 
-  /* ─── NAV ─── */
-  .nav {
-    display: flex; align-items: center; gap: 0; padding: 0 24px;
-    height: 54px; background: #fff; border-bottom: 1px solid #e5e7eb;
-    position: relative;
-  }
+/* ─── LOGO VARIANTS ───────────────────────────────── */
+.logo-green { width:28px;height:28px;border-radius:6px;background:#2D6A1F;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff; }
+.logo-navy  { width:32px;height:32px;border-radius:7px;background:#1B2B6B;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;position:relative;overflow:hidden; }
+.logo-navy::after { content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(to right,#29ABE2,#39B54A,#FBB03B,#F7941D,#EC008C); }
+.logo-modern { width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:#fff;position:relative;overflow:hidden;background:#1B2B6B;box-shadow:0 4px 12px rgba(27,43,107,.35); }
+.logo-modern::before { content:'';position:absolute;inset:0;background:linear-gradient(135deg,#1B2B6B 60%,#2D3F8F); }
+.logo-modern::after { content:'';position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(to right,#29ABE2,#39B54A,#FBB03B,#F7941D,#EC008C); }
+.logo-modern span { position:relative;z-index:1; }
 
-  /* Current: solid green stripe */
-  .nav.stripe-green::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
-    background: rgba(45,106,31,0.4);
-  }
+/* ─── NAV STRIPE VARIANTS ─────────────────────────── */
+.stripe-green::after  { content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(45,106,31,.4); }
+.stripe-rainbow::after { content:'';position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(to right,#29ABE2,#39B54A,#FBB03B,#F7941D,#EC008C); }
 
-  /* Qiddiya: full rainbow gradient stripe */
-  .nav.stripe-rainbow::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
-    background: linear-gradient(to right,
-      #29ABE2,  /* cyan */
-      #8DC63F,  /* lime */
-      #39B54A,  /* green */
-      #C8D92A,  /* yellow-green */
-      #FBB03B,  /* yellow */
-      #F7941D,  /* orange */
-      #F15A24,  /* red-orange */
-      #EC008C   /* pink */
-    );
-  }
+/* ─── ACTIVE TAB VARIANTS ─────────────────────────── */
+.tab-active-g { font-weight:600;color:#2D6A1F; }
+.tab-active-g::after { content:'';position:absolute;left:6px;right:6px;bottom:-14px;height:2px;border-radius:2px 2px 0 0;background:#2D6A1F; }
+.tab-active-q { font-weight:700;color:#1B2B6B; }
+.tab-active-q::after { content:'';position:absolute;left:0;right:0;bottom:-14px;height:3px;background:linear-gradient(to right,#29ABE2,#39B54A,#FBB03B,#F7941D,#EC008C); }
+.tab-active-m { font-weight:700;color:#1B2B6B;letter-spacing:-.01em; }
+.tab-active-m::after { content:'';position:absolute;left:0;right:0;bottom:-14px;height:3px;border-radius:2px 2px 0 0;background:linear-gradient(to right,#29ABE2,#39B54A,#FBB03B); }
 
-  .nav-brand {
-    display: flex; align-items: center; gap: 8px;
-    padding-right: 20px; border-right: 1px solid #e5e7eb; margin-right: 16px;
-    font-size: 13.5px; font-weight: 500; color: #6b7280; white-space: nowrap; flex-shrink: 0;
-  }
-  .nav-logo-green {
-    width: 28px; height: 28px; border-radius: 6px; background: #2D6A1F;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0;
-  }
-  /* Qiddiya logo: navy with rainbow underline */
-  .nav-logo-q {
-    width: 32px; height: 32px; border-radius: 7px; background: #1B2B6B;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0;
-    position: relative; overflow: hidden;
-  }
-  .nav-logo-q::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
-    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
-  }
+/* ─── AVATAR ──────────────────────────────────────── */
+.av-g { width:30px;height:30px;border-radius:50%;background:#2D6A1F;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center; }
+.av-q { width:30px;height:30px;border-radius:50%;background:#1B2B6B;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center; }
+.av-m { width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1B2B6B,#29ABE2);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(27,43,107,.3); }
 
-  .nav-tabs { display: flex; gap: 2px; flex: 1; }
-  .nav-tab {
-    position: relative; display: flex; align-items: center; gap: 5px;
-    padding: 6px 14px; border-radius: 6px; font-size: 13px;
-    color: #6b7280; cursor: pointer; transition: all .15s;
-  }
-  .nav-tab.active-green { font-weight: 600; color: #2D6A1F; }
-  .nav-tab.active-green::after {
-    content: ''; position: absolute; left: 6px; right: 6px; bottom: -14px; height: 2px;
-    border-radius: 2px 2px 0 0; background: #2D6A1F;
-  }
-  .nav-tab.active-navy { font-weight: 700; color: #1B2B6B; }
-  .nav-tab.active-navy::after {
-    content: ''; position: absolute; left: 0; right: 0; bottom: -14px; height: 3px;
-    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
-  }
+/* ─── BODY AREA ───────────────────────────────────── */
+.body-g { background:#f9fafb;padding:24px; }
+.body-q { background:#f0f3fb;padding:24px; }
+.body-m { background:linear-gradient(160deg,#f0f3fb 0%,#f7f5ff 100%);padding:28px; }
 
-  .nav-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
-  .avatar-green { width: 30px; height: 30px; border-radius: 50%; background: #2D6A1F; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .avatar-navy  { width: 30px; height: 30px; border-radius: 50%; background: #1B2B6B; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
-  .theme-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb; background: #f9fafb; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+/* ─── WEEK HEADER ─────────────────────────────────── */
+.week-hdr { display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap; }
+.wk-arrow { width:28px;height:28px;border-radius:6px;border:1px solid #e5e7eb;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:#6b7280;cursor:pointer; }
+.wk-label-g { padding:5px 12px;border:1px solid #e5e7eb;background:#fff;border-radius:8px;font-size:13px;font-weight:600;color:#111; }
+.wk-label-q { padding:5px 14px;border:1px solid #d0d8ef;background:#fff;border-radius:9px;font-size:13px;font-weight:600;color:#1B2B6B; }
+.wk-label-m { padding:6px 16px;border:none;background:#fff;border-radius:12px;font-size:13px;font-weight:700;color:#1B2B6B;box-shadow:0 2px 12px rgba(27,43,107,.12); }
+.badge-g { padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb; }
+.badge-q { padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:#e8edf8;color:#1B2B6B;border:1px solid #c5d0ea; }
+.badge-m { padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;background:linear-gradient(to right,#e8edf8,#e0f5ff);color:#1B2B6B;border:none;box-shadow:0 1px 4px rgba(27,43,107,.1); }
+.pub-g { padding:7px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:#2D6A1F;color:#fff;margin-left:auto; }
+.pub-q { padding:7px 18px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:#1B2B6B;color:#fff;margin-left:auto; }
+.pub-m { padding:8px 22px;border-radius:12px;border:none;cursor:pointer;font-size:13px;font-weight:700;background:linear-gradient(135deg,#1B2B6B,#29ABE2);color:#fff;margin-left:auto;box-shadow:0 4px 16px rgba(27,43,107,.3);transition:transform .15s,box-shadow .15s; }
+.pub-m:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(27,43,107,.4); }
 
-  /* ─── BODY ─── */
-  .body-area { background: #f9fafb; padding: 24px; }
-  .body-area.q-bg { background: #f0f3fb; }
+/* ─── SYNC BAR ────────────────────────────────────── */
+.sync { display:flex;align-items:center;gap:8px;padding:8px 14px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;color:#6b7280;margin-bottom:16px; }
+.sync.q-sync { border-color:#d0d8ef;border-radius:12px; }
+.sync.m-sync { border:none;background:rgba(255,255,255,.75);backdrop-filter:blur(10px);border-radius:14px;box-shadow:0 2px 12px rgba(27,43,107,.08); }
+.dot-g { width:7px;height:7px;border-radius:50%;background:#2D6A1F; }
+.dot-q { width:7px;height:7px;border-radius:50%;background:#39B54A; }
+.dot-m { width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#39B54A,#29ABE2);box-shadow:0 0 0 2px rgba(57,181,74,.2); }
 
-  /* week header */
-  .week-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .week-arrow { width: 28px; height: 28px; border-radius: 6px; border: 1px solid #e5e7eb; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #6b7280; cursor: pointer; }
-  .week-label { padding: 5px 12px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; font-size: 13px; font-weight: 600; color: #111827; }
-  .badge-draft-g { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
-  .badge-draft-q { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: #e8edf8; color: #1B2B6B; border: 1px solid #c5d0ea; }
-  .pub-btn-g { padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; background: #2D6A1F; color: #fff; margin-left: auto; }
-  .pub-btn-q { padding: 7px 18px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 700; background: #1B2B6B; color: #fff; margin-left: auto; }
+/* ─── KPI CARDS ───────────────────────────────────── */
+.kpi-row { display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px; }
 
-  /* sync bar */
-  .sync-bar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 12px; color: #6b7280; margin-bottom: 16px; }
+/* Current */
+.kpi-g { background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px 18px;min-width:110px;flex:1; }
 
-  /* KPI cards */
-  .kpi-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-  .kpi-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 14px 18px; min-width: 110px; flex: 1; transition: box-shadow .2s, transform .15s; }
-  .kpi-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.09); transform: translateY(-2px); }
-  .kpi-card.q-card { border-color: #d0d8ef; }
-  .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; font-weight: 600; margin-bottom: 6px; }
-  .kpi-label.q-lbl { color: #7a88b8; }
-  .kpi-value { font-size: 26px; font-weight: 700; }
+/* Qiddiya */
+.kpi-q { background:#fff;border:1px solid #d0d8ef;border-radius:14px;padding:14px 18px;min-width:110px;flex:1;transition:box-shadow .2s,transform .15s; }
+.kpi-q:hover { box-shadow:0 6px 24px rgba(27,43,107,.1);transform:translateY(-2px); }
 
-  /* table */
-  .sched-table { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; overflow: hidden; }
-  .sched-table.q-tbl { border-color: #d0d8ef; }
-  .sched-table table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  .sched-table thead tr { background: #f9fafb; border-bottom: 1px solid #e5e7eb; }
-  .sched-table.q-tbl thead tr { background: #edf0f9; border-bottom-color: #d0d8ef; }
-  .sched-table th { padding: 10px 12px; text-align: center; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: #9ca3af; }
-  .sched-table.q-tbl th { color: #7a88b8; }
-  .sched-table th:first-child { text-align: left; }
-  .sched-table td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #f3f4f6; color: #111827; }
-  .sched-table.q-tbl td { border-bottom-color: #e8edf8; color: #1B2B6B; }
-  .sched-table td:first-child { text-align: left; font-weight: 600; }
-  .sched-table tr:last-child td { border-bottom: none; }
+/* Modern — glassmorphism + accent left bar */
+.kpi-m {
+  background:rgba(255,255,255,.85);
+  backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.9);
+  border-radius:18px;
+  padding:16px 20px;
+  min-width:110px;flex:1;
+  position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(27,43,107,.07);
+  transition:box-shadow .25s,transform .2s;
+}
+.kpi-m:hover { box-shadow:0 10px 36px rgba(27,43,107,.14);transform:translateY(-3px); }
+.kpi-m::before { content:'';position:absolute;top:0;left:0;bottom:0;width:3px;border-radius:3px 0 0 3px; }
+.kpi-m.bar-green::before  { background:#39B54A; }
+.kpi-m.bar-cyan::before   { background:#29ABE2; }
+.kpi-m.bar-orange::before { background:#F7941D; }
+.kpi-m.bar-navy::before   { background:#1B2B6B; }
+.kpi-m.bar-gray::before   { background:#c5d0ea; }
 
-  /* ─── STATUS PILLS ─── */
-  /* Current */
-  .g-off { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#dcfce7;color:#166534; }
-  .g-rem { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#dbeafe;color:#1e40af; }
-  .g-lve { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#f3f4f6;color:#6b7280; }
-  .g-oth { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fef3c7;color:#92400e; }
-  .g-hol { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fef3c7;color:#b45309; }
+.kpi-label { font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#9ca3af;font-weight:600;margin-bottom:6px; }
+.kpi-label.ql { color:#7a88b8; }
+.kpi-label.ml { color:#9aabcf;font-size:9.5px; }
+.kpi-value { font-size:26px;font-weight:700; }
+.kpi-value.m-val { font-size:28px;font-weight:800;letter-spacing:-.03em; }
 
-  /* Qiddiya — pills pull from the logo's color spectrum */
-  .q-off { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#d6f0e0;color:#1a6b3a; }  /* green bar */
-  .q-rem { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#cceeff;color:#005f8a; }  /* cyan bar */
-  .q-lve { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#e8edf8;color:#5a6a9a; }  /* navy muted */
-  .q-oth { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#ffe8cc;color:#b85a00; }  /* orange bar */
-  .q-hol { display:inline-block;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:700;font-family:monospace;background:#fce4f0;color:#b0006a; }  /* pink bar */
+/* ─── SCHEDULE TABLE ──────────────────────────────── */
+.tbl-wrap { background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden; }
+.tbl-wrap.q-tbl { border-color:#d0d8ef; }
+.tbl-wrap.m-tbl { background:rgba(255,255,255,.9);border:none;border-radius:20px;box-shadow:0 4px 24px rgba(27,43,107,.09);backdrop-filter:blur(8px); }
+.tbl-wrap table { width:100%;border-collapse:collapse;font-size:12.5px; }
+.tbl-wrap thead tr { background:#f9fafb;border-bottom:1px solid #e5e7eb; }
+.tbl-wrap.q-tbl thead tr { background:#edf0f9;border-bottom-color:#d0d8ef; }
+.tbl-wrap.m-tbl thead tr { background:rgba(240,243,251,.8);border-bottom:1px solid rgba(208,216,239,.5); }
+.tbl-wrap th { padding:11px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#9ca3af; }
+.tbl-wrap.q-tbl th { color:#7a88b8; }
+.tbl-wrap.m-tbl th { color:#9aabcf; }
+.tbl-wrap th:first-child { text-align:left; }
+.tbl-wrap td { padding:11px 12px;text-align:center;border-bottom:1px solid #f3f4f6;color:#111827; }
+.tbl-wrap.q-tbl td { border-bottom-color:#edf0f9;color:#1B2B6B; }
+.tbl-wrap.m-tbl td { border-bottom-color:rgba(237,240,249,.7);color:#1B2B6B; }
+.tbl-wrap td:first-child { text-align:left;font-weight:600; }
+.tbl-wrap tr:last-child td { border-bottom:none; }
+.tbl-wrap.m-tbl tbody tr { transition:background .15s; }
+.tbl-wrap.m-tbl tbody tr:hover td { background:rgba(240,243,251,.7); }
 
-  /* count row */
-  .count-g { background:#f9fafb;font-weight:700;font-size:11px; }
-  .count-q { background:#edf0f9;font-weight:700;font-size:11px; }
+/* ─── STATUS PILLS ────────────────────────────────── */
+.pill { display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;font-family:monospace;transition:transform .1s; }
+.pill:hover { transform:scale(1.08); }
 
-  /* swatches */
-  .swatches { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
-  .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .swatch-box { width: 44px; height: 44px; border-radius: 10px; border: 1px solid rgba(0,0,0,.08); }
-  .swatch-label { font-size: 9px; font-weight: 600; color: #555; text-align: center; }
-  .swatch-hex   { font-size: 8.5px; color: #999; font-family: monospace; }
+/* Current green */
+.g-off{background:#dcfce7;color:#166534} .g-rem{background:#dbeafe;color:#1e40af}
+.g-lve{background:#f3f4f6;color:#6b7280} .g-oth{background:#fef3c7;color:#92400e}
+.g-hol{background:#fef3c7;color:#b45309}
 
-  .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin-top: 18px; margin-bottom: 10px; }
+/* Qiddiya spectrum */
+.q-off{background:#d6f0e0;color:#1a6b3a} .q-rem{background:#cceeff;color:#005f8a}
+.q-lve{background:#e8edf8;color:#5a6a9a} .q-oth{background:#ffe8cc;color:#b85a00}
+.q-hol{background:#fce4f0;color:#b0006a}
 
-  /* label chip */
-  .theme-chip { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; margin: 14px 0 14px 16px; }
-  .chip-g { background: #dcfce7; color: #166534; }
-  .chip-q { background: #e8edf8; color: #1B2B6B; }
+/* Modern — slightly larger, rounded, subtle shadow */
+.m-off{background:#d6f0e0;color:#1a6b3a;border-radius:8px;padding:4px 9px;box-shadow:0 1px 4px rgba(57,181,74,.15)}
+.m-rem{background:#cceeff;color:#005f8a;border-radius:8px;padding:4px 9px;box-shadow:0 1px 4px rgba(41,171,226,.15)}
+.m-lve{background:#e8edf8;color:#5a6a9a;border-radius:8px;padding:4px 9px}
+.m-oth{background:#ffe8cc;color:#b85a00;border-radius:8px;padding:4px 9px;box-shadow:0 1px 4px rgba(247,148,29,.15)}
+.m-hol{background:linear-gradient(135deg,#fce4f0,#ffe0f5);color:#b0006a;border-radius:8px;padding:4px 9px}
 
-  /* rainbow logo preview */
-  .q-logo-large {
-    width: 48px; height: 48px; border-radius: 10px; background: #1B2B6B;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; font-weight: 800; color: #fff; position: relative; overflow: hidden; flex-shrink: 0;
-  }
-  .q-logo-large::after {
-    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 4px;
-    background: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
-  }
+/* ─── COUNT ROW ───────────────────────────────────── */
+.count-g { background:#f9fafb;font-weight:700;font-size:11px; }
+.count-q { background:#edf0f9;font-weight:700;font-size:11px; }
+.count-m { background:linear-gradient(to right,rgba(240,243,251,.9),rgba(224,245,255,.6));font-weight:800;font-size:11px; }
+
+/* ─── SWATCHES ────────────────────────────────────── */
+.swatches { display:flex;gap:10px;margin-top:14px;flex-wrap:wrap; }
+.swatch { display:flex;flex-direction:column;align-items:center;gap:4px; }
+.swatch-box { width:44px;height:44px;border-radius:10px;border:1px solid rgba(0,0,0,.08); }
+.swatch-lbl { font-size:9px;font-weight:600;color:#555;text-align:center; }
+.swatch-hex { font-size:8.5px;color:#999;font-family:monospace; }
+
+.sec-title { font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin:18px 0 10px; }
+.note-box { margin-top:16px;padding:12px 14px;background:rgba(255,255,255,.8);border:1px solid rgba(208,216,239,.6);border-radius:12px;font-size:12px;color:#1B2B6B;line-height:1.6;backdrop-filter:blur(8px); }
+
+/* ─── SECTION CHIP ────────────────────────────────── */
+.chip { display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;margin:14px 0 14px 16px; }
+.chip-g { background:#dcfce7;color:#166534; }
+.chip-q { background:#e8edf8;color:#1B2B6B; }
+.chip-m { background:linear-gradient(to right,#e8edf8,#d6f0ff);color:#1B2B6B; }
 </style>
 </head>
 <body>
 
 <h1>CDU Workspace Planner — Theme Preview</h1>
-<p>Extracted directly from the Qiddiya logo. Toggle to compare. <strong>Nothing in the app has changed yet.</strong></p>
+<p>Three options side by side. <strong>Nothing in the app has changed yet.</strong></p>
 
 <div class="switcher">
-  <button class="sw-btn active" onclick="show('current',this)">Current (Green)</button>
-  <button class="sw-btn"        onclick="show('qiddiya',this)">Qiddiya — Navy + Spectrum</button>
+  <button class="sw-btn active" onclick="show('current',this)">① Current (Green)</button>
+  <button class="sw-btn"        onclick="show('qiddiya',this)">② Qiddiya Colors</button>
+  <button class="sw-btn"        onclick="show('modern',this)">③ Qiddiya + Modern Design ✨</button>
 </div>
 
-<!-- ══════════ CURRENT ══════════ -->
+
+<!-- ════════════════ ① CURRENT ════════════════ -->
 <div class="frame visible" id="frame-current">
-  <div class="theme-chip chip-g">Current theme</div>
-
+  <div class="chip chip-g">① Current theme</div>
   <div class="nav stripe-green">
-    <div class="nav-brand">
-      <div class="nav-logo-green">CDU</div>
-      Workspace Planner
-    </div>
+    <div class="nav-brand"><div class="logo-green">CDU</div> <span style="font-size:13.5px;font-weight:500;color:#6b7280">Workspace Planner</span></div>
     <div class="nav-tabs">
-      <div class="nav-tab active-green">📅 Schedule</div>
+      <div class="nav-tab tab-active-g">📅 Schedule</div>
       <div class="nav-tab">📊 Analytics</div>
       <div class="nav-tab">🕐 History</div>
       <div class="nav-tab">⚙️ Settings</div>
     </div>
-    <div class="nav-right">
-      <div class="theme-btn">☀️</div>
-      <div class="avatar-green">D</div>
-    </div>
+    <div class="nav-right"><div class="theme-btn">☀️</div><div class="av-g">D</div></div>
   </div>
-
-  <div class="body-area">
-    <div class="week-header">
-      <div class="week-arrow">‹</div>
-      <div class="week-label">Jun 7 – Jun 13, 2026</div>
-      <div class="week-arrow">›</div>
-      <div class="badge-draft-g">● Draft</div>
-      <button class="pub-btn-g">Publish week</button>
+  <div class="body-g">
+    <div class="week-hdr">
+      <div class="wk-arrow">‹</div><div class="wk-label-g">Jun 7 – Jun 13, 2026</div><div class="wk-arrow">›</div>
+      <div class="badge-g">● Draft</div><button class="pub-g">Publish week</button>
     </div>
-    <div class="sync-bar"><span style="width:7px;height:7px;border-radius:50%;background:#2D6A1F;display:inline-block"></span> All changes save automatically</div>
-
+    <div class="sync"><div class="dot-g"></div> All changes save automatically</div>
     <div class="kpi-row">
-      <div class="kpi-card"><div class="kpi-label">Available seats</div><div class="kpi-value" style="color:#2D6A1F">7</div></div>
-      <div class="kpi-card"><div class="kpi-label">Today in office</div><div class="kpi-value" style="color:#2D6A1F">5 / 7</div></div>
-      <div class="kpi-card"><div class="kpi-label">In office (period)</div><div class="kpi-value" style="color:#2D6A1F">35</div></div>
-      <div class="kpi-card"><div class="kpi-label">Remote (period)</div><div class="kpi-value" style="color:#1A5FA0">35</div></div>
-      <div class="kpi-card"><div class="kpi-label">Leave</div><div class="kpi-value" style="color:#9ca3af">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Other location</div><div class="kpi-value" style="color:#8A5009">0</div></div>
-      <div class="kpi-card"><div class="kpi-label">Seat utilization</div><div class="kpi-value" style="color:#2D6A1F">100%</div></div>
+      <div class="kpi-g"><div class="kpi-label">Available seats</div><div class="kpi-value" style="color:#2D6A1F">7</div></div>
+      <div class="kpi-g"><div class="kpi-label">Today in office</div><div class="kpi-value" style="color:#2D6A1F">5/7</div></div>
+      <div class="kpi-g"><div class="kpi-label">In office (period)</div><div class="kpi-value" style="color:#2D6A1F">35</div></div>
+      <div class="kpi-g"><div class="kpi-label">Remote (period)</div><div class="kpi-value" style="color:#1A5FA0">35</div></div>
+      <div class="kpi-g"><div class="kpi-label">Leave</div><div class="kpi-value" style="color:#9ca3af">0</div></div>
+      <div class="kpi-g"><div class="kpi-label">Other location</div><div class="kpi-value" style="color:#8A5009">0</div></div>
+      <div class="kpi-g"><div class="kpi-label">Seat utilization</div><div class="kpi-value" style="color:#2D6A1F">100%</div></div>
     </div>
-
-    <div class="sched-table">
+    <div class="tbl-wrap">
       <table>
         <thead><tr><th>Staff</th><th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th></tr></thead>
         <tbody>
-          <tr><td>Emma Jones <span style="font-size:10px;color:#9ca3af">Lead</span></td><td><span class="g-off">OFF</span></td><td><span class="g-rem">REM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-lve">LVE</span></td><td><span class="g-rem">REM</span></td></tr>
-          <tr><td>Zaina Khan <span style="font-size:10px;color:#9ca3af">Head</span></td><td><span class="g-rem">REM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-hol">HOL</span></td><td><span class="g-off">OFF</span></td><td><span class="g-off">OFF</span></td></tr>
-          <tr><td>Eman Mushayt <span style="font-size:10px;color:#9ca3af">AM</span></td><td><span class="g-off">OFF</span></td><td><span class="g-off">OFF</span></td><td><span class="g-hol">HOL</span></td><td><span class="g-oth">OTH</span></td><td><span class="g-off">OFF</span></td></tr>
-          <tr class="count-g"><td style="color:#6b7280;padding:10px 12px">In office</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#F59E0B">HOL</td><td style="color:#2D6A1F">6/7</td><td style="color:#2D6A1F">7/7</td></tr>
+          <tr><td>Emma Jones <span style="font-size:10px;color:#9ca3af">Lead</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-rem">REM</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-lve">LVE</span></td><td><span class="pill g-rem">REM</span></td></tr>
+          <tr><td>Zaina Khan <span style="font-size:10px;color:#9ca3af">Head</span></td><td><span class="pill g-rem">REM</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-hol">HOL</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-off">OFF</span></td></tr>
+          <tr><td>Eman Mushayt <span style="font-size:10px;color:#9ca3af">AM</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-off">OFF</span></td><td><span class="pill g-hol">HOL</span></td><td><span class="pill g-oth">OTH</span></td><td><span class="pill g-off">OFF</span></td></tr>
+          <tr class="count-g"><td style="color:#6b7280;padding:11px 12px">In office</td><td style="color:#2D6A1F">7/7</td><td style="color:#2D6A1F">7/7</td><td style="color:#F59E0B">HOL</td><td style="color:#2D6A1F">6/7</td><td style="color:#2D6A1F">7/7</td></tr>
         </tbody>
       </table>
-    </div>
-
-    <div class="section-title">Color palette</div>
-    <div class="swatches">
-      <div class="swatch"><div class="swatch-box" style="background:#2D6A1F"></div><div class="swatch-label">Primary</div><div class="swatch-hex">#2D6A1F</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#1A5FA0"></div><div class="swatch-label">Blue</div><div class="swatch-hex">#1A5FA0</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#8A5009"></div><div class="swatch-label">Amber</div><div class="swatch-hex">#8A5009</div></div>
     </div>
   </div>
 </div>
 
-<!-- ══════════ QIDDIYA ══════════ -->
-<div class="frame" id="frame-qiddiya">
-  <div class="theme-chip chip-q">Qiddiya theme — extracted from logo</div>
 
+<!-- ════════════════ ② QIDDIYA COLORS ════════════════ -->
+<div class="frame" id="frame-qiddiya">
+  <div class="chip chip-q">② Qiddiya colors — same layout</div>
   <div class="nav stripe-rainbow">
-    <div class="nav-brand" style="border-color:#d0d8ef;color:#7a88b8">
-      <div class="nav-logo-q">CDU</div>
-      Workspace Planner
-    </div>
+    <div class="nav-brand" style="border-color:#d0d8ef"><div class="logo-navy">CDU</div> <span style="font-size:13.5px;font-weight:500;color:#7a88b8">Workspace Planner</span></div>
     <div class="nav-tabs">
-      <div class="nav-tab active-navy">📅 Schedule</div>
+      <div class="nav-tab tab-active-q">📅 Schedule</div>
       <div class="nav-tab">📊 Analytics</div>
       <div class="nav-tab">🕐 History</div>
       <div class="nav-tab">⚙️ Settings</div>
     </div>
-    <div class="nav-right">
-      <div class="theme-btn" style="border-color:#d0d8ef">☀️</div>
-      <div class="avatar-navy">D</div>
-    </div>
+    <div class="nav-right"><div class="theme-btn" style="border-color:#d0d8ef">☀️</div><div class="av-q">D</div></div>
   </div>
-
-  <div class="body-area q-bg">
-    <div class="week-header">
-      <div class="week-arrow" style="border-color:#d0d8ef;color:#7a88b8">‹</div>
-      <div class="week-label" style="border-color:#d0d8ef;color:#1B2B6B">Jun 7 – Jun 13, 2026</div>
-      <div class="week-arrow" style="border-color:#d0d8ef;color:#7a88b8">›</div>
-      <div class="badge-draft-q">● Draft</div>
-      <button class="pub-btn-q">Publish week</button>
+  <div class="body-q">
+    <div class="week-hdr">
+      <div class="wk-arrow" style="border-color:#d0d8ef;color:#7a88b8">‹</div><div class="wk-label-q">Jun 7 – Jun 13, 2026</div><div class="wk-arrow" style="border-color:#d0d8ef;color:#7a88b8">›</div>
+      <div class="badge-q">● Draft</div><button class="pub-q">Publish week</button>
     </div>
-    <div class="sync-bar" style="border-color:#d0d8ef"><span style="width:7px;height:7px;border-radius:50%;background:#39B54A;display:inline-block"></span> All changes save automatically</div>
-
+    <div class="sync q-sync"><div class="dot-q"></div> All changes save automatically</div>
     <div class="kpi-row">
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Available seats</div><div class="kpi-value" style="color:#1B2B6B">7</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Today in office</div><div class="kpi-value" style="color:#39B54A">5 / 7</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">In office (period)</div><div class="kpi-value" style="color:#39B54A">35</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Remote (period)</div><div class="kpi-value" style="color:#29ABE2">35</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Leave</div><div class="kpi-value" style="color:#b0bcd8">0</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Other location</div><div class="kpi-value" style="color:#F7941D">0</div></div>
-      <div class="kpi-card q-card"><div class="kpi-label q-lbl">Seat utilization</div><div class="kpi-value" style="color:#1B2B6B">100%</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Available seats</div><div class="kpi-value" style="color:#1B2B6B">7</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Today in office</div><div class="kpi-value" style="color:#39B54A">5/7</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">In office (period)</div><div class="kpi-value" style="color:#39B54A">35</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Remote (period)</div><div class="kpi-value" style="color:#29ABE2">35</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Leave</div><div class="kpi-value" style="color:#b0bcd8">0</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Other location</div><div class="kpi-value" style="color:#F7941D">0</div></div>
+      <div class="kpi-q"><div class="kpi-label ql">Seat utilization</div><div class="kpi-value" style="color:#1B2B6B">100%</div></div>
     </div>
-
-    <div class="sched-table q-tbl">
+    <div class="tbl-wrap q-tbl">
       <table>
         <thead><tr><th>Staff</th><th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th></tr></thead>
         <tbody>
-          <tr><td>Emma Jones <span style="font-size:10px;color:#7a88b8">Lead</span></td><td><span class="q-off">OFF</span></td><td><span class="q-rem">REM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-lve">LVE</span></td><td><span class="q-rem">REM</span></td></tr>
-          <tr><td>Zaina Khan <span style="font-size:10px;color:#7a88b8">Head</span></td><td><span class="q-rem">REM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-hol">HOL</span></td><td><span class="q-off">OFF</span></td><td><span class="q-off">OFF</span></td></tr>
-          <tr><td>Eman Mushayt <span style="font-size:10px;color:#7a88b8">AM</span></td><td><span class="q-off">OFF</span></td><td><span class="q-off">OFF</span></td><td><span class="q-hol">HOL</span></td><td><span class="q-oth">OTH</span></td><td><span class="q-off">OFF</span></td></tr>
-          <tr class="count-q"><td style="color:#7a88b8;padding:10px 12px">In office</td><td style="color:#1B2B6B">7/7</td><td style="color:#1B2B6B">7/7</td><td style="color:#EC008C">HOL</td><td style="color:#1B2B6B">6/7</td><td style="color:#1B2B6B">7/7</td></tr>
+          <tr><td>Emma Jones <span style="font-size:10px;color:#7a88b8">Lead</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-rem">REM</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-lve">LVE</span></td><td><span class="pill q-rem">REM</span></td></tr>
+          <tr><td>Zaina Khan <span style="font-size:10px;color:#7a88b8">Head</span></td><td><span class="pill q-rem">REM</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-hol">HOL</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-off">OFF</span></td></tr>
+          <tr><td>Eman Mushayt <span style="font-size:10px;color:#7a88b8">AM</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-off">OFF</span></td><td><span class="pill q-hol">HOL</span></td><td><span class="pill q-oth">OTH</span></td><td><span class="pill q-off">OFF</span></td></tr>
+          <tr class="count-q"><td style="color:#7a88b8;padding:11px 12px">In office</td><td style="color:#1B2B6B">7/7</td><td style="color:#1B2B6B">7/7</td><td style="color:#EC008C">HOL</td><td style="color:#1B2B6B">6/7</td><td style="color:#1B2B6B">7/7</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="sec-title">Color palette from logo</div>
+    <div class="swatches">
+      <div class="swatch"><div class="swatch-box" style="background:#1B2B6B"></div><div class="swatch-lbl">Navy</div><div class="swatch-hex">#1B2B6B</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#29ABE2"></div><div class="swatch-lbl">Cyan</div><div class="swatch-hex">#29ABE2</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#39B54A"></div><div class="swatch-lbl">Green</div><div class="swatch-hex">#39B54A</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#FBB03B"></div><div class="swatch-lbl">Yellow</div><div class="swatch-hex">#FBB03B</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#F7941D"></div><div class="swatch-lbl">Orange</div><div class="swatch-hex">#F7941D</div></div>
+      <div class="swatch"><div class="swatch-box" style="background:#EC008C"></div><div class="swatch-lbl">Pink</div><div class="swatch-hex">#EC008C</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════ ③ MODERN ════════════════ -->
+<div class="frame" id="frame-modern">
+  <div class="chip chip-m">③ Qiddiya + Modern Design ✨</div>
+  <div class="nav stripe-rainbow" style="background:#fff;border-bottom:1px solid rgba(208,216,239,.4)">
+    <div class="nav-brand" style="border-color:rgba(208,216,239,.5)"><div class="logo-modern"><span>CDU</span></div> <span style="font-size:13.5px;font-weight:600;color:#7a88b8;letter-spacing:-.01em">Workspace Planner</span></div>
+    <div class="nav-tabs">
+      <div class="nav-tab tab-active-m">📅 Schedule</div>
+      <div class="nav-tab" style="color:#9aabcf">📊 Analytics</div>
+      <div class="nav-tab" style="color:#9aabcf">🕐 History</div>
+      <div class="nav-tab" style="color:#9aabcf">⚙️ Settings</div>
+    </div>
+    <div class="nav-right"><div class="theme-btn" style="border-color:rgba(208,216,239,.5);background:rgba(240,243,251,.6)">☀️</div><div class="av-m">D</div></div>
+  </div>
+  <div class="body-m">
+    <div class="week-hdr">
+      <div class="wk-arrow" style="border-color:rgba(208,216,239,.4);background:rgba(255,255,255,.7);color:#9aabcf;border-radius:9px">‹</div>
+      <div class="wk-label-m">Jun 7 – Jun 13, 2026</div>
+      <div class="wk-arrow" style="border-color:rgba(208,216,239,.4);background:rgba(255,255,255,.7);color:#9aabcf;border-radius:9px">›</div>
+      <div class="badge-m">● Draft</div>
+      <button class="pub-m">Publish week</button>
+    </div>
+    <div class="sync m-sync"><div class="dot-m"></div> <span style="color:#7a88b8">All changes save automatically</span></div>
+
+    <div class="kpi-row">
+      <div class="kpi-m bar-navy"><div class="kpi-label ml">Available seats</div><div class="kpi-value m-val" style="color:#1B2B6B">7</div></div>
+      <div class="kpi-m bar-green"><div class="kpi-label ml">Today in office</div><div class="kpi-value m-val" style="color:#39B54A">5/7</div></div>
+      <div class="kpi-m bar-green"><div class="kpi-label ml">In office (period)</div><div class="kpi-value m-val" style="color:#39B54A">35</div></div>
+      <div class="kpi-m bar-cyan"><div class="kpi-label ml">Remote (period)</div><div class="kpi-value m-val" style="color:#29ABE2">35</div></div>
+      <div class="kpi-m bar-gray"><div class="kpi-label ml">Leave</div><div class="kpi-value m-val" style="color:#b0bcd8">0</div></div>
+      <div class="kpi-m bar-orange"><div class="kpi-label ml">Other location</div><div class="kpi-value m-val" style="color:#F7941D">0</div></div>
+      <div class="kpi-m bar-navy"><div class="kpi-label ml">Seat utilization</div><div class="kpi-value m-val" style="color:#1B2B6B">100%</div></div>
+    </div>
+
+    <div class="tbl-wrap m-tbl">
+      <table>
+        <thead><tr><th>Staff</th><th>Sun 7</th><th>Mon 8</th><th>Tue 9</th><th>Wed 10</th><th>Thu 11</th></tr></thead>
+        <tbody>
+          <tr><td>Emma Jones <span style="font-size:10px;color:#9aabcf">Lead</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-rem">REM</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-lve">LVE</span></td><td><span class="pill m-rem">REM</span></td></tr>
+          <tr><td>Zaina Khan <span style="font-size:10px;color:#9aabcf">Head</span></td><td><span class="pill m-rem">REM</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-hol">HOL</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-off">OFF</span></td></tr>
+          <tr><td>Eman Mushayt <span style="font-size:10px;color:#9aabcf">AM</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-off">OFF</span></td><td><span class="pill m-hol">HOL</span></td><td><span class="pill m-oth">OTH</span></td><td><span class="pill m-off">OFF</span></td></tr>
+          <tr class="count-m"><td style="color:#9aabcf;padding:11px 12px;font-weight:700">In office</td><td style="color:#1B2B6B">7/7</td><td style="color:#1B2B6B">7/7</td><td style="color:#EC008C">HOL</td><td style="color:#1B2B6B">6/7</td><td style="color:#1B2B6B">7/7</td></tr>
         </tbody>
       </table>
     </div>
 
-    <div class="section-title" style="color:#7a88b8">Color palette — from Qiddiya logo</div>
-    <div class="swatches">
-      <div class="swatch"><div class="swatch-box" style="background:#1B2B6B"></div><div class="swatch-label">Navy (text)</div><div class="swatch-hex">#1B2B6B</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#29ABE2"></div><div class="swatch-label">Cyan</div><div class="swatch-hex">#29ABE2</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#39B54A"></div><div class="swatch-label">Green</div><div class="swatch-hex">#39B54A</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#FBB03B"></div><div class="swatch-label">Yellow</div><div class="swatch-hex">#FBB03B</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#F7941D"></div><div class="swatch-label">Orange</div><div class="swatch-hex">#F7941D</div></div>
-      <div class="swatch"><div class="swatch-box" style="background:#EC008C"></div><div class="swatch-label">Pink</div><div class="swatch-hex">#EC008C</div></div>
-    </div>
-
-    <div style="margin-top:16px;padding:12px 14px;background:#fff;border:1px solid #d0d8ef;border-radius:10px;font-size:12px;color:#1B2B6B">
-      <strong>Design concept:</strong> Navy as the authoritative base color (matches the Qiddiya wordmark). The rainbow spectrum from the logo arch appears as the active tab underline and nav bottom stripe — a subtle nod to Qiddiya without being garish. Status pills borrow from the spectrum: Office=green, Remote=cyan, Other=orange, Holiday=pink.
+    <div class="note-box">
+      <strong style="color:#1B2B6B">What's new in ③ vs ②</strong><br><br>
+      🪟 <strong>Glassmorphism cards</strong> — KPI cards use frosted glass (backdrop blur + semi-transparent white)<br>
+      🎨 <strong>Accent left bar</strong> — each KPI card has a colored left bar matching its data type<br>
+      ✨ <strong>Hover animations</strong> — cards lift on hover, pills scale up on hover, Publish button has a glow lift<br>
+      🌅 <strong>Gradient background</strong> — body uses a subtle navy→violet tint instead of flat grey<br>
+      💡 <strong>Gradient logo</strong> — CDU badge has a subtle inner gradient + the rainbow underline strip<br>
+      🔵 <strong>Gradient avatar</strong> — user avatar uses navy→cyan gradient<br>
+      📐 <strong>Rounder corners</strong> — cards at 18px, table at 20px, buttons at 12px for a softer feel<br>
+      🔤 <strong>Tighter typography</strong> — KPI numbers are bolder (800 weight) with tighter letter-spacing
     </div>
   </div>
 </div>
