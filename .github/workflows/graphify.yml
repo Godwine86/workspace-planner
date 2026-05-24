@@ -21,8 +21,7 @@ jobs:
 
       - name: Build Knowledge Graph
         run: |
-          graphify . --backend none
-
+          graphify . --backend ollama
 
       - name: Commit and Push Map
         run: |
