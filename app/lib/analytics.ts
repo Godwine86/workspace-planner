@@ -62,6 +62,7 @@ export function computeAnalytics(
   seats: number,
   publishedWeeks: { week_start: string; published_at?: string }[],
   entries: { staff_id: string; entry_date: string; status: string }[],
+  holidayMap: Record<string, string> = {},
 ): AnalyticsData {
   if (!publishedWeeks.length) {
     return {
@@ -84,13 +85,13 @@ export function computeAnalytics(
   const effEnd  = new Date(lastWs)
   effEnd.setDate(lastWs.getDate() + 4)
 
-  // All published working days in range
+  // All published working days in range — exclude holidays
   const allWorkDays: string[] = []
   const cursor = new Date(firstWs)
   while (cursor <= effEnd) {
     if (WORK_DOW.includes(cursor.getDay())) {
       const ds = fmt(new Date(cursor))
-      if (publishedSet.has(sunKey(ds))) allWorkDays.push(ds)
+      if (publishedSet.has(sunKey(ds)) && !holidayMap[ds]) allWorkDays.push(ds)
     }
     cursor.setDate(cursor.getDate() + 1)
   }
