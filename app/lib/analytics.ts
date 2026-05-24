@@ -2,10 +2,21 @@ import type { Staff } from '@/types/database'
 import { fmt, weekStart } from './schedule'
 import { WORK_DOW } from './utils'
 
-// DB-only status resolution — never falls back to pattern
-function effSt(raw: string | undefined): 'office' | 'remote' | 'leave' | 'other' | null {
-  if (!raw) return null
+// Resolve status with pattern fallback — same as History view.
+// Explicit entry wins; if none, use the staff's default pattern for that day-of-week.
+function resolveStatus(
+  m: Staff,
+  ds: string,
+  lookup: Record<string, string>,
+): 'office' | 'remote' | 'leave' | 'other' | null {
+  const raw = lookup[`${m.id}__${ds}`]
   if (raw === 'office' || raw === 'remote' || raw === 'leave' || raw === 'other') return raw
+  if (raw) return null  // unknown status, ignore
+  // Fall back to pattern
+  const [y, mo, d] = ds.split('-').map(Number)
+  const dow = new Date(y, mo - 1, d).getDay()
+  const pat = m.pattern?.[dow]
+  if (pat === 'office' || pat === 'remote' || pat === 'leave' || pat === 'other') return pat
   return null
 }
 
@@ -89,7 +100,7 @@ export function computeAnalytics(
   allWorkDays.forEach(ds => {
     dailyMap[ds] = { office: 0, remote: 0, leave: 0, other: 0 }
     staff.forEach(m => {
-      const st = effSt(lookup[`${m.id}__${ds}`])
+      const st = resolveStatus(m, ds, lookup)
       if (st === 'office') dailyMap[ds].office++
       else if (st === 'remote') dailyMap[ds].remote++
       else if (st === 'leave') dailyMap[ds].leave++
@@ -144,14 +155,12 @@ export function computeAnalytics(
     other:  dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].ot / dowAcc[dow].n * 10) / 10 : 0,
   }))
 
-  // Staff totals — DB entries only (no pattern fallback)
+  // Staff totals — explicit entry or pattern fallback (matches History view)
   const staffMap: Record<string, { id: string; name: string; role: string | null; office: number; remote: number; leave: number; other: number }> = {}
   staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, role: m.role, office: 0, remote: 0, leave: 0, other: 0 } })
   allWorkDays.forEach(ds => {
     staff.forEach(m => {
-      const raw = lookup[`${m.id}__${ds}`]
-      if (!raw) return  // no entry = not counted (intentional — analytics ≠ schedule)
-      const st = effSt(raw)
+      const st = resolveStatus(m, ds, lookup)
       if (st === 'office') staffMap[m.id].office++
       else if (st === 'remote') staffMap[m.id].remote++
       else if (st === 'leave') staffMap[m.id].leave++
