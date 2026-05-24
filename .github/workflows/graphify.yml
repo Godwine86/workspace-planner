@@ -21,8 +21,8 @@ jobs:
 
       - name: Build Knowledge Graph
         run: |
-          OLLAMA_API_KEY=mock_key graphify . --backend ollama || echo "Structural pass finished"
-          python -m graphify report --out graphify-out/GRAPH_REPORT.md || graphify report || echo "Fallback report built"
+          OLLAMA_API_KEY=mock_key graphify . --backend ollama --force || echo "Bypassed extraction error"
+          graphify report --out graphify-out/GRAPH_REPORT.md --force || echo "Forced report creation"
 
       - name: Commit and Push Map
         run: |
