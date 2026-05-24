@@ -21,7 +21,8 @@ jobs:
 
       - name: Build Knowledge Graph
         run: |
-          OPENAI_API_KEY=mock_key graphify .
+          graphify . --backend none
+
 
       - name: Commit and Push Map
         run: |
