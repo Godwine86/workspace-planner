@@ -252,7 +252,6 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
               Based on <strong className="text-gray-700 dark:text-gray-300">{data.publishedWeekCount} published week{data.publishedWeekCount !== 1 ? 's' : ''}</strong>
               {data.rangeLabel && <> &nbsp;·&nbsp; {data.rangeLabel}</>}
             </span>
-            <span className="ml-auto text-gray-400">Other-office attendance counted as in-office</span>
           </div>
 
           {/* KPIs */}
