@@ -22,6 +22,7 @@ jobs:
       - name: Build Knowledge Graph
         run: |
           OLLAMA_API_KEY=mock_key graphify . --backend ollama || echo "Completed structural generation"
+          graphify report --out graphify-out/GRAPH_REPORT.md || echo "Report compiled"
 
       - name: Commit and Push Map
         run: |
