@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+:root {
+  --green:   #2D6A1F;
+  --blue:    #1A5FA0;
+  --amber:   #8A5009;
+}
+
+@theme inline {
+  --color-green: var(--green);
+  --color-blue:  var(--blue);
+  --color-amber: var(--amber);
+}
+
+body {
+  font-family: var(--font-dm-sans), 'DM Sans', Arial, sans-serif;
+}
