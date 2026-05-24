@@ -1,33 +1,31 @@
-name: Generate Graphify Map
+name: Generate Repository Map
 on:
   push:
     branches: [ main, master ]
 
 jobs:
-  build-graph:
+  build-map:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install Graphify
+      - name: Create Structure Map
         run: |
-          pip install graphifyy openai
-
-      - name: Build Knowledge Graph
-        run: |
-          OLLAMA_API_KEY=mock_key graphify . --backend ollama --force || echo "Bypassed extraction error"
-          graphify report --out graphify-out/GRAPH_REPORT.md --force || echo "Forced report creation"
+          mkdir -p graphify-out
+          echo "# Codebase Structure Map" > graphify-out/GRAPH_REPORT.md
+          echo "Generated on: $(date)" >> graphify-out/GRAPH_REPORT.md
+          echo -e "\n## File Tree\n\`\`\`text" >> graphify-out/GRAPH_REPORT.md
+          
+          # This lists all files while ignoring heavy hidden folders like .git
+          find . -maxdepth 4 -not -path '*/.*' >> graphify-out/GRAPH_REPORT.md
+          
+          echo -e "\`\`\`" >> graphify-out/GRAPH_REPORT.md
 
       - name: Commit and Push Map
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@://github.com"
           git add graphify-out/
-          git commit -m "chore: auto-update graphify map [skip ci]" || echo "No changes"
+          git commit -m "chore: update codebase map [skip ci]" || echo "No changes"
           git push
