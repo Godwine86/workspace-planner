@@ -3,11 +3,9 @@ import { fmt, weekStart } from './schedule'
 import { WORK_DOW } from './utils'
 
 // DB-only status resolution — never falls back to pattern
-// 'other' intentionally counts as 'office' (matches original behaviour, noted in UI)
-function effSt(raw: string | undefined): 'office' | 'remote' | 'leave' | null {
+function effSt(raw: string | undefined): 'office' | 'remote' | 'leave' | 'other' | null {
   if (!raw) return null
-  if (raw === 'other') return 'office'
-  if (raw === 'office' || raw === 'remote' || raw === 'leave') return raw
+  if (raw === 'office' || raw === 'remote' || raw === 'leave' || raw === 'other') return raw
   return null
 }
 
@@ -21,6 +19,7 @@ export interface AnalyticsData {
   // Summary KPIs
   totalOffice: number
   totalRemote: number
+  totalOther: number
   avgDailyOffice: number   // rounded to 1dp
   avgUtilization: number   // integer %
   publishedWorkDays: number
@@ -31,7 +30,7 @@ export interface AnalyticsData {
   weeklyUtil: { label: string; util: number }[]
 
   // Day-of-week bar chart data
-  dowData: { day: string; office: number; remote: number }[]
+  dowData: { day: string; office: number; remote: number; other: number }[]
 
   // Staff breakdown table
   staffRows: {
@@ -41,7 +40,9 @@ export interface AnalyticsData {
     office: number
     remote: number
     leave: number
+    other: number
     officePct: number
+    otherPct: number
   }[]
 }
 
@@ -53,7 +54,7 @@ export function computeAnalytics(
 ): AnalyticsData {
   if (!publishedWeeks.length) {
     return {
-      totalOffice: 0, totalRemote: 0, avgDailyOffice: 0,
+      totalOffice: 0, totalRemote: 0, totalOther: 0, avgDailyOffice: 0,
       avgUtilization: 0, publishedWorkDays: 0, publishedWeekCount: 0,
       rangeLabel: '', weeklyUtil: [], dowData: [], staffRows: [],
     }
@@ -83,21 +84,26 @@ export function computeAnalytics(
     cursor.setDate(cursor.getDate() + 1)
   }
 
-  // Daily map: dateStr → { office, remote, leave }
-  const dailyMap: Record<string, { office: number; remote: number; leave: number }> = {}
+  // Daily map: dateStr → { office, remote, leave, other }
+  const dailyMap: Record<string, { office: number; remote: number; leave: number; other: number }> = {}
   allWorkDays.forEach(ds => {
-    dailyMap[ds] = { office: 0, remote: 0, leave: 0 }
+    dailyMap[ds] = { office: 0, remote: 0, leave: 0, other: 0 }
     staff.forEach(m => {
       const st = effSt(lookup[`${m.id}__${ds}`])
       if (st === 'office') dailyMap[ds].office++
       else if (st === 'remote') dailyMap[ds].remote++
       else if (st === 'leave') dailyMap[ds].leave++
+      else if (st === 'other') dailyMap[ds].other++
     })
   })
 
   // Summary KPIs
-  let totalOffice = 0, totalRemote = 0
-  allWorkDays.forEach(ds => { totalOffice += dailyMap[ds].office; totalRemote += dailyMap[ds].remote })
+  let totalOffice = 0, totalRemote = 0, totalOther = 0
+  allWorkDays.forEach(ds => {
+    totalOffice += dailyMap[ds].office
+    totalRemote += dailyMap[ds].remote
+    totalOther  += dailyMap[ds].other
+  })
   const n = allWorkDays.length
   const avgDailyOffice = n > 0 ? Math.round(totalOffice / n * 10) / 10 : 0
   const avgUtilization = n > 0 && seats > 0 ? Math.round(totalOffice / n / seats * 100) : 0
@@ -117,28 +123,30 @@ export function computeAnalytics(
   })
 
   // Day-of-week averages for bar chart
-  const dowAcc: Record<number, { o: number; r: number; n: number }> = {
-    0: { o: 0, r: 0, n: 0 }, 1: { o: 0, r: 0, n: 0 }, 2: { o: 0, r: 0, n: 0 },
-    3: { o: 0, r: 0, n: 0 }, 4: { o: 0, r: 0, n: 0 },
+  const dowAcc: Record<number, { o: number; r: number; ot: number; n: number }> = {
+    0: { o: 0, r: 0, ot: 0, n: 0 }, 1: { o: 0, r: 0, ot: 0, n: 0 }, 2: { o: 0, r: 0, ot: 0, n: 0 },
+    3: { o: 0, r: 0, ot: 0, n: 0 }, 4: { o: 0, r: 0, ot: 0, n: 0 },
   }
   allWorkDays.forEach(ds => {
     const dow = new Date(ds + 'T00:00:00').getDay()
     if (dowAcc[dow]) {
       dowAcc[dow].n++
-      dowAcc[dow].o += dailyMap[ds].office
-      dowAcc[dow].r += dailyMap[ds].remote
+      dowAcc[dow].o  += dailyMap[ds].office
+      dowAcc[dow].r  += dailyMap[ds].remote
+      dowAcc[dow].ot += dailyMap[ds].other
     }
   })
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']
   const dowData = WORK_DOW.map((dow, i) => ({
     day: DAY_NAMES[i],
-    office: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].o / dowAcc[dow].n * 10) / 10 : 0,
-    remote: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].r / dowAcc[dow].n * 10) / 10 : 0,
+    office: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].o  / dowAcc[dow].n * 10) / 10 : 0,
+    remote: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].r  / dowAcc[dow].n * 10) / 10 : 0,
+    other:  dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].ot / dowAcc[dow].n * 10) / 10 : 0,
   }))
 
   // Staff totals — DB entries only (no pattern fallback)
-  const staffMap: Record<string, { id: string; name: string; title: string | null; office: number; remote: number; leave: number }> = {}
-  staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, title: m.title, office: 0, remote: 0, leave: 0 } })
+  const staffMap: Record<string, { id: string; name: string; title: string | null; office: number; remote: number; leave: number; other: number }> = {}
+  staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, title: m.title, office: 0, remote: 0, leave: 0, other: 0 } })
   allWorkDays.forEach(ds => {
     staff.forEach(m => {
       const raw = lookup[`${m.id}__${ds}`]
@@ -147,13 +155,18 @@ export function computeAnalytics(
       if (st === 'office') staffMap[m.id].office++
       else if (st === 'remote') staffMap[m.id].remote++
       else if (st === 'leave') staffMap[m.id].leave++
+      else if (st === 'other') staffMap[m.id].other++
     })
   })
   const staffRows = Object.values(staffMap)
     .sort((a, b) => b.office - a.office)
     .map(s => {
-      const total = s.office + s.remote + s.leave
-      return { ...s, officePct: total > 0 ? Math.round(s.office / total * 100) : 0 }
+      const total = s.office + s.remote + s.leave + s.other
+      return {
+        ...s,
+        officePct: total > 0 ? Math.round(s.office / total * 100) : 0,
+        otherPct:  total > 0 ? Math.round(s.other  / total * 100) : 0,
+      }
     })
 
   // Range label
@@ -164,7 +177,7 @@ export function computeAnalytics(
   const rangeLabel = `${fmtDate(sorted[0].week_start)} – ${lastEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
 
   return {
-    totalOffice, totalRemote, avgDailyOffice, avgUtilization,
+    totalOffice, totalRemote, totalOther, avgDailyOffice, avgUtilization,
     publishedWorkDays: allWorkDays.length,
     publishedWeekCount: sorted.length,
     rangeLabel,

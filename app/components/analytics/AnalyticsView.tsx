@@ -259,6 +259,7 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
           <AnalyticsKPIs
             totalOffice={data.totalOffice}
             totalRemote={data.totalRemote}
+            totalOther={data.totalOther}
             avgDailyOffice={data.avgDailyOffice}
             avgUtilization={data.avgUtilization}
             publishedWorkDays={data.publishedWorkDays}

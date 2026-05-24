@@ -145,23 +145,45 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                       </tr>
                     ))}
 
-                    {/* Count row */}
+                    {/* In office count row (seats) */}
                     <tr className="bg-gray-50 dark:bg-gray-900/60">
                       <td className="px-4 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
                         In office
                       </td>
                       {workDates.map(d => {
                         const dateStr = fmt(d)
-                        const count = staff.filter(m => {
+                        const isHol = !!holidayMap[dateStr]
+                        const count = isHol ? 0 : staff.filter(m => {
                           const st = getStatus(m.id, dateStr, m, entryMap)
-                          return st === 'office' || st === 'other'
+                          return st === 'office'
                         }).length
                         return (
                           <td key={dateStr} className={cn(
                             'text-center py-2 text-[12px] font-bold font-mono border-r border-gray-100 dark:border-gray-800 last:border-r-0',
+                            isHol ? 'text-amber-500 dark:text-amber-400' :
                             count >= seats ? 'text-red-600 dark:text-red-400' : 'text-[var(--green)]'
                           )}>
-                            {count}/{seats}
+                            {isHol ? 'HOL' : `${count}/${seats}`}
+                          </td>
+                        )
+                      })}
+                    </tr>
+
+                    {/* Other location count row */}
+                    <tr className="bg-gray-50 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800">
+                      <td className="px-4 py-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                        Other location
+                      </td>
+                      {workDates.map(d => {
+                        const dateStr = fmt(d)
+                        const isHol = !!holidayMap[dateStr]
+                        const count = isHol ? 0 : staff.filter(m => {
+                          const st = getStatus(m.id, dateStr, m, entryMap)
+                          return st === 'other'
+                        }).length
+                        return (
+                          <td key={dateStr} className="text-center py-2 text-[12px] font-bold font-mono text-amber-600 dark:text-amber-400 border-r border-gray-100 dark:border-gray-800 last:border-r-0">
+                            {isHol ? '—' : count > 0 ? count : '—'}
                           </td>
                         )
                       })}
