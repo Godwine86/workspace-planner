@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { Staff } from '@/types/database'
 import type { EntryCache } from '@/lib/schedule'
-import { getScheduleStatus, todayDate, fmt } from '@/lib/schedule'
+import { getScheduleStatus, todayDate, fmt, entryKey } from '@/lib/schedule'
 
 interface Props {
   staff: Staff[]
@@ -28,9 +28,10 @@ function KPICard({ label, children }: KPICardProps) {
 export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
   const today = todayDate()
 
-  // Today in office (holidays count as 0)
+  // Today in office — only count explicit cache entries, never pattern fallback.
+  // If today is outside the loaded week, pattern fallback would give wrong counts.
   const todayIsHoliday = !!holidayMap[fmt(today)]
-  const todayOffice = todayIsHoliday ? 0 : staff.filter(m => getScheduleStatus(m, today, cache) === 'office').length
+  const todayOffice = todayIsHoliday ? 0 : staff.filter(m => cache[entryKey(m.id, today)]?.status === 'office').length
   const todayPct = seats > 0 ? Math.min(100, Math.round(todayOffice / seats * 100)) : 0
   const todayColor =
     todayOffice > seats ? 'text-red-600 dark:text-red-400' :
