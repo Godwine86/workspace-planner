@@ -13,12 +13,17 @@ interface Props {
 
 interface KPICardProps {
   label: string
+  accent: string
   children: React.ReactNode
 }
 
-function KPICard({ label, children }: KPICardProps) {
+function KPICard({ label, accent, children }: KPICardProps) {
   return (
-    <div className="flex flex-col gap-1 px-5 py-3.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl min-w-[120px]">
+    <div
+      className="relative flex flex-col gap-1 pl-5 pr-5 py-3.5 glass rounded-xl min-w-[120px] overflow-hidden transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-md"
+      style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
       <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">{label}</div>
       {children}
     </div>
@@ -28,17 +33,20 @@ function KPICard({ label, children }: KPICardProps) {
 export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
   const today = todayDate()
 
-  // Today in office — only count explicit cache entries, never pattern fallback.
-  // If today is outside the loaded week, pattern fallback would give wrong counts.
   const todayIsHoliday = !!holidayMap[fmt(today)]
   const todayOffice = todayIsHoliday ? 0 : staff.filter(m => cache[entryKey(m.id, today)]?.status === 'office').length
   const todayPct = seats > 0 ? Math.min(100, Math.round(todayOffice / seats * 100)) : 0
-  const todayColor =
-    todayOffice > seats ? 'text-red-600 dark:text-red-400' :
-    todayOffice >= seats * 0.8 ? 'text-amber-600 dark:text-amber-400' :
+
+  const todayBarColor =
+    todayOffice > seats   ? '#ef4444' :
+    todayOffice >= seats * 0.8 ? '#F7941D' :
+    'var(--green)'
+
+  const todayTextColor =
+    todayOffice > seats   ? 'text-red-600 dark:text-red-400' :
+    todayOffice >= seats * 0.8 ? 'text-[var(--amber)]' :
     'text-[var(--green)]'
 
-  // Period totals — skip holiday days entirely
   let totalOffice = 0, totalRemote = 0, totalLeave = 0, totalOther = 0
   let nonHolidayDays = 0
   workDays.forEach(d => {
@@ -56,51 +64,50 @@ export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
   const avgDaily = nonHolidayDays > 0 ? totalOffice / nonHolidayDays : 0
   const utilPct = seats > 0 ? Math.round(avgDaily / seats * 100) : 0
 
+  const utilColor =
+    utilPct > 100 ? '#ef4444' :
+    utilPct >= 80  ? '#F7941D' :
+    'var(--primary)'
+
   return (
     <div className="flex flex-wrap gap-3 mb-5">
-      <KPICard label="Available seats">
-        <span className="text-2xl font-semibold text-[var(--green)]">{seats}</span>
+      <KPICard label="Available seats" accent="var(--primary)">
+        <span className="text-2xl font-semibold text-[var(--primary)] dark:text-blue-300">{seats}</span>
       </KPICard>
 
-      <KPICard label="Today in office">
-        <span className={cn('text-2xl font-semibold', todayColor)}>
+      <KPICard label="Today in office" accent="var(--green)">
+        <span className={cn('text-2xl font-semibold', todayTextColor)}>
           {todayOffice} / {seats}
         </span>
-        <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden mt-1">
+        <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden mt-1">
           <div
-            className={cn(
-              'h-full rounded-full transition-all',
-              todayOffice > seats ? 'bg-red-500' :
-              todayOffice >= seats * 0.8 ? 'bg-amber-400' : 'bg-[var(--green)]'
-            )}
-            style={{ width: `${todayPct}%` }}
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${todayPct}%`, background: todayBarColor }}
           />
         </div>
       </KPICard>
 
-      <KPICard label="In office (period)">
+      <KPICard label="In office (period)" accent="var(--green)">
         <span className="text-2xl font-semibold text-[var(--green)]">{totalOffice}</span>
       </KPICard>
 
-      <KPICard label="Remote (period)">
+      <KPICard label="Remote (period)" accent="var(--blue)">
         <span className="text-2xl font-semibold text-[var(--blue)]">{totalRemote}</span>
       </KPICard>
 
-      <KPICard label="Leave">
+      <KPICard label="Leave" accent="#94a3b8">
         <span className="text-2xl font-semibold text-gray-400">{totalLeave}</span>
       </KPICard>
 
-      <KPICard label="Other location">
+      <KPICard label="Other location" accent="var(--amber)">
         <span className="text-2xl font-semibold text-[var(--amber)]">{totalOther}</span>
       </KPICard>
 
-      <KPICard label="Seat utilization">
-        <span className={cn(
-          'text-2xl font-semibold',
-          utilPct > 100 ? 'text-red-600 dark:text-red-400' :
-          utilPct >= 80  ? 'text-amber-600 dark:text-amber-400' :
-          'text-gray-800 dark:text-gray-200'
-        )}>
+      <KPICard label="Seat utilization" accent={utilColor}>
+        <span
+          className="text-2xl font-semibold"
+          style={{ color: utilColor }}
+        >
           {utilPct}%
         </span>
       </KPICard>

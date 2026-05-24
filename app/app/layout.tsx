@@ -34,7 +34,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${dmSans.variable} ${dmMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+      <body className="min-h-full flex flex-col text-gray-900 dark:text-gray-100">
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
