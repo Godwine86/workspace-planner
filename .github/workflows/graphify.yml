@@ -17,11 +17,11 @@ jobs:
 
       - name: Install Graphify
         run: |
-          pip install graphifyy
+          pip install graphify
 
       - name: Build Knowledge Graph
         run: |
-        graphify . --no-llm
+          graphify . --no-llm
 
       - name: Commit and Push Map
         run: |
