@@ -55,9 +55,8 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
       if (wErr) throw wErr
 
       const pubInRange = (allPubW as { week_start: string }[] ?? []).filter(w => {
-        const ws = new Date(w.week_start + 'T00:00:00')
-        const we = new Date(ws); we.setDate(ws.getDate() + 6)
-        return we >= rangeStart && ws <= endDate
+        const we = new Date(w.week_start + 'T00:00:00'); we.setDate(we.getDate() + 6)
+        return we >= rangeStart  // only filter how far back; future published weeks are included
       })
 
       if (!pubInRange.length) {
