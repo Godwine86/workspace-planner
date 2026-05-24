@@ -11,12 +11,19 @@ export default async function HistoryPage() {
     { data: staff },
     { data: groups },
     { data: settings },
+    { data: holidays },
   ] = await Promise.all([
     supabase.from('week_plans').select('week_start,status,published_at').order('week_start', { ascending: false }).limit(52),
     supabase.from('staff').select('*').order('sort_order'),
     supabase.from('groups').select('*').order('sort_order'),
     supabase.from('app_settings').select('*'),
+    supabase.from('holidays').select('date,name'),
   ])
+
+  const holidayMap: Record<string, string> = {}
+  ;(holidays as { date: string; name: string | null }[] | null ?? []).forEach(h => {
+    holidayMap[h.date] = h.name ?? ''
+  })
 
   const seats = parseInt(
     ((settings as { key: string; value: string }[] | null) ?? []).find(s => s.key === 'seats')?.value ?? '7'
@@ -49,6 +56,7 @@ export default async function HistoryPage() {
       staff={(staff as Parameters<typeof HistoryView>[0]['staff']) ?? []}
       groups={(groups as Parameters<typeof HistoryView>[0]['groups']) ?? []}
       seats={seats}
+      holidayMap={holidayMap}
     />
   )
 }
