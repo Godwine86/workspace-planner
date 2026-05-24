@@ -40,14 +40,14 @@ export function StaffTable({ rows }: Props) {
             <tr key={row.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{row.name}</td>
               <td className="px-4 py-2.5 text-gray-400 text-[12px]">{row.role ?? '—'}</td>
-              <td className="px-4 py-2.5 text-center font-mono text-[var(--green)] font-medium">{row.office}</td>
-              <td className="px-4 py-2.5 text-center font-mono text-[var(--amber)] font-medium">{row.other || '—'}</td>
-              <td className="px-4 py-2.5 text-center font-mono text-[var(--blue)] font-medium">{row.remote}</td>
+              <td className="px-4 py-2.5 text-center font-mono font-medium" style={{ color: 'var(--green)' }}>{row.office}</td>
+              <td className="px-4 py-2.5 text-center font-mono font-medium" style={{ color: 'var(--amber)' }}>{row.other || '—'}</td>
+              <td className="px-4 py-2.5 text-center font-mono font-medium" style={{ color: 'var(--blue)' }}>{row.remote}</td>
               <td className="px-4 py-2.5 text-center font-mono text-gray-400">{row.leave}</td>
               <td className="px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden min-w-[60px]">
-                    <div className="h-full bg-[var(--green)] rounded-full" style={{ width: `${row.officePct}%` }} />
+                    <div className="h-full rounded-full" style={{ width: `${row.officePct}%`, background: 'var(--green)' }} />
                   </div>
                   <span className="font-mono text-[11px] text-gray-500 w-8 text-right">{row.officePct}%</span>
                 </div>
@@ -56,7 +56,7 @@ export function StaffTable({ rows }: Props) {
                 {row.otherPct > 0 ? (
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden min-w-[60px]">
-                      <div className="h-full bg-[var(--amber)] rounded-full" style={{ width: `${row.otherPct}%` }} />
+                      <div className="h-full rounded-full" style={{ width: `${row.otherPct}%`, background: 'var(--amber)' }} />
                     </div>
                     <span className="font-mono text-[11px] text-gray-500 w-8 text-right">{row.otherPct}%</span>
                   </div>

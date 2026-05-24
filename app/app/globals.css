@@ -4,17 +4,46 @@
 @custom-variant dark (&:is(.dark, .dark *));
 
 :root {
-  --green:   #2D6A1F;
-  --blue:    #1A5FA0;
-  --amber:   #8A5009;
+  /* Qiddiya palette */
+  --primary: #1B2B6B;
+  --green:   #39B54A;
+  --blue:    #29ABE2;
+  --amber:   #F7941D;
+  --pink:    #EC008C;
+  --yellow:  #FBB03B;
+  --rainbow: linear-gradient(to right, #29ABE2, #39B54A, #FBB03B, #F7941D, #EC008C);
+
+  /* Body gradient */
+  --bg-gradient: linear-gradient(160deg, #f0f3fb 0%, #f7f5ff 100%);
+}
+
+.dark {
+  --bg-gradient: linear-gradient(160deg, #07091a 0%, #0d1230 100%);
 }
 
 @theme inline {
-  --color-green: var(--green);
-  --color-blue:  var(--blue);
-  --color-amber: var(--amber);
+  --color-green:   var(--green);
+  --color-blue:    var(--blue);
+  --color-amber:   var(--amber);
+  --color-primary: var(--primary);
+  --color-pink:    var(--pink);
 }
 
 body {
   font-family: var(--font-dm-sans), 'DM Sans', Arial, sans-serif;
+  background: var(--bg-gradient);
+  min-height: 100vh;
+}
+
+/* Glass card utility */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.dark .glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }

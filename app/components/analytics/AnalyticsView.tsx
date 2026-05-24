@@ -246,7 +246,7 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
       {!loading && !error && data && data.publishedWeekCount > 0 && (
         <>
           {/* Info bar */}
-          <div className="flex items-center gap-2 mb-5 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-2 mb-5 px-4 py-2.5 glass rounded-lg text-xs text-gray-500 dark:text-gray-400">
             <Lock size={12} className="text-[var(--green)] flex-shrink-0" />
             <span>
               Based on <strong className="text-gray-700 dark:text-gray-300">{data.publishedWeekCount} published week{data.publishedWeekCount !== 1 ? 's' : ''}</strong>
@@ -266,13 +266,13 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+            <div className="glass rounded-xl p-4" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                 Weekly seat utilization
               </h3>
               <WeeklyUtilChart data={data.weeklyUtil} />
             </div>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+            <div className="glass rounded-xl p-4" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
                 Average attendance by day of week
               </h3>
@@ -281,7 +281,7 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
           </div>
 
           {/* Staff table */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+          <div className="glass rounded-xl overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
               <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Staff attendance breakdown

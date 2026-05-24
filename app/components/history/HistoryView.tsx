@@ -1,3 +1,4 @@
+import type React from 'react'
 import { cn } from '@/lib/utils'
 import { fmt } from '@/lib/schedule'
 import { STATUS_META } from '@/lib/schedule'
@@ -7,11 +8,18 @@ import type { Status } from '@/types/database'
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
+// Qiddiya palette — office=green, remote=cyan, leave=gray, other=orange
+const STATUS_STYLE: Record<Status, React.CSSProperties> = {
+  office: { background: 'rgba(57,181,74,0.15)',  color: '#1a7a2a' },
+  remote: { background: 'rgba(41,171,226,0.15)', color: '#0f6fa0' },
+  leave:  { background: 'rgba(148,163,184,0.12)', color: '#64748b' },
+  other:  { background: 'rgba(247,148,29,0.15)',  color: '#b05a00' },
+}
 const STATUS_CLS: Record<Status, string> = {
-  office: 'bg-green-100 dark:bg-green-950 text-green-800 dark:text-green-300',
-  remote: 'bg-blue-100  dark:bg-blue-950  text-blue-800  dark:text-blue-300',
-  leave:  'bg-gray-100  dark:bg-gray-800  text-gray-500  dark:text-gray-400',
-  other:  'bg-amber-50  dark:bg-amber-950 text-amber-700 dark:text-amber-400',
+  office: '',
+  remote: '',
+  leave:  '',
+  other:  '',
 }
 
 export interface WeekData {
@@ -82,16 +90,17 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
             : null
 
           return (
-            <div key={week.weekStart} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
+            <div key={week.weekStart} className="glass rounded-xl overflow-hidden transition-transform duration-150 hover:-translate-y-0.5" style={{ boxShadow: '0 2px 16px rgba(27,43,107,0.06)' }}>
               {/* Week header */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-wrap">
                 <span className="font-semibold text-[14px] text-gray-900 dark:text-gray-100">{label}</span>
-                <span className={cn(
-                  'text-[11px] px-2 py-0.5 rounded-full border font-medium',
-                  isPublished
-                    ? 'bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700'
-                )}>
+                <span
+                  className="text-[11px] px-2 py-0.5 rounded-full border font-medium"
+                  style={isPublished
+                    ? { background: 'rgba(57,181,74,0.12)', color: 'var(--green)', borderColor: 'rgba(57,181,74,0.3)' }
+                    : undefined
+                  }
+                >
                   {isPublished ? '🔒 Published' : '✏️ Draft'}
                 </span>
                 {pubDate && (
@@ -129,11 +138,11 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                           return (
                             <td key={dateStr} className="px-1 py-2 text-center border-r border-gray-100 dark:border-gray-800 last:border-r-0">
                               {isHoliday ? (
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400">
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono" style={{ background: 'rgba(236,0,140,0.12)', color: 'var(--pink)' }}>
                                   HOL
                                 </span>
                               ) : st ? (
-                                <span className={cn('inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono', STATUS_CLS[st])}>
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono" style={STATUS_STYLE[st]}>
                                   {STATUS_META[st].short}
                                 </span>
                               ) : (
@@ -160,7 +169,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                         return (
                           <td key={dateStr} className={cn(
                             'text-center py-2 text-[12px] font-bold font-mono border-r border-gray-100 dark:border-gray-800 last:border-r-0',
-                            isHol ? 'text-amber-500 dark:text-amber-400' :
+                            isHol ? 'text-[var(--pink)]' :
                             count >= seats ? 'text-red-600 dark:text-red-400' : 'text-[var(--green)]'
                           )}>
                             {isHol ? 'HOL' : `${count}/${seats}`}
@@ -171,7 +180,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
 
                     {/* Other location count row */}
                     <tr className="bg-gray-50 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800">
-                      <td className="px-4 py-2 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                      <td className="px-4 py-2 text-[11px] font-semibold text-[var(--amber)]">
                         Other location
                       </td>
                       {workDates.map(d => {
@@ -182,7 +191,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                           return st === 'other'
                         }).length
                         return (
-                          <td key={dateStr} className="text-center py-2 text-[12px] font-bold font-mono text-amber-600 dark:text-amber-400 border-r border-gray-100 dark:border-gray-800 last:border-r-0">
+                          <td key={dateStr} className="text-center py-2 text-[12px] font-bold font-mono text-[var(--amber)] border-r border-gray-100 dark:border-gray-800 last:border-r-0">
                             {isHol ? '—' : count > 0 ? count : '—'}
                           </td>
                         )
