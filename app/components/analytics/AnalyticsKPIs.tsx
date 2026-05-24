@@ -1,6 +1,7 @@
 interface Props {
   totalOffice: number
   totalRemote: number
+  totalOther: number
   avgDailyOffice: number
   avgUtilization: number
   publishedWorkDays: number
@@ -17,14 +18,15 @@ function Card({ label, value, color }: CardProps) {
   )
 }
 
-export function AnalyticsKPIs({ totalOffice, totalRemote, avgDailyOffice, avgUtilization, publishedWorkDays }: Props) {
+export function AnalyticsKPIs({ totalOffice, totalRemote, totalOther, avgDailyOffice, avgUtilization, publishedWorkDays }: Props) {
   return (
     <div className="flex flex-wrap gap-3 mb-6">
-      <Card label="Total in-office"     value={totalOffice}     color="var(--green)" />
-      <Card label="Total remote"        value={totalRemote}     color="var(--blue)"  />
-      <Card label="Avg daily in-office" value={avgDailyOffice}                       />
-      <Card label="Avg seat utilization" value={`${avgUtilization}%`}                />
-      <Card label="Published work days" value={publishedWorkDays}                    />
+      <Card label="Total in-office"      value={totalOffice}          color="var(--green)" />
+      <Card label="Total other location" value={totalOther}           color="var(--amber)" />
+      <Card label="Total remote"         value={totalRemote}          color="var(--blue)"  />
+      <Card label="Avg daily in-office"  value={avgDailyOffice}                            />
+      <Card label="Avg seat utilization" value={`${avgUtilization}%`}                      />
+      <Card label="Published work days"  value={publishedWorkDays}                         />
     </div>
   )
 }

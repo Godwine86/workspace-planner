@@ -47,7 +47,7 @@ export function WeeklyUtilChart({ data }: WeeklyChartProps) {
 }
 
 interface DowChartProps {
-  data: { day: string; office: number; remote: number }[]
+  data: { day: string; office: number; remote: number; other: number }[]
 }
 
 export function DowChart({ data }: DowChartProps) {
@@ -74,8 +74,9 @@ export function DowChart({ data }: DowChartProps) {
           wrapperStyle={{ fontSize: 11, fontFamily: 'DM Sans, sans-serif' }}
           iconSize={10}
         />
-        <Bar dataKey="office" name="Office" fill="#8CC87A" radius={[3, 3, 0, 0]} maxBarSize={24} />
-        <Bar dataKey="remote" name="Remote" fill="#7AAEE8" radius={[3, 3, 0, 0]} maxBarSize={24} />
+        <Bar dataKey="office" name="Office"         fill="#8CC87A" radius={[3, 3, 0, 0]} maxBarSize={24} />
+        <Bar dataKey="other"  name="Other location" fill="#FBB96E" radius={[3, 3, 0, 0]} maxBarSize={24} />
+        <Bar dataKey="remote" name="Remote"         fill="#7AAEE8" radius={[3, 3, 0, 0]} maxBarSize={24} />
       </BarChart>
     </ResponsiveContainer>
   )
