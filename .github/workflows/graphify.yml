@@ -17,11 +17,11 @@ jobs:
 
       - name: Install Graphify
         run: |
-          pip install graphifyy
+          pip install graphifyy openai
 
       - name: Build Knowledge Graph
         run: |
-          graphify . --backend ollama
+          OLLAMA_API_KEY=mock_key graphify . --backend ollama
 
       - name: Commit and Push Map
         run: |
