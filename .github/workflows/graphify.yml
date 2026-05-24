@@ -1,0 +1,32 @@
+name: Generate Graphify Map
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-graph:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Graphify
+        run: |
+          pip install graphifyy
+
+      - name: Build Knowledge Graph
+        run: |
+          graphify .
+
+      - name: Commit and Push Map
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@://github.com"
+          git add graphify-out/
+          git commit -m "chore: auto-update graphify map [skip ci]" || echo "No changes"
+          git push
