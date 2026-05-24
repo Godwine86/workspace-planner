@@ -1,7 +1,7 @@
 interface StaffRow {
   id: string
   name: string
-  title: string | null
+  role: string | null
   office: number
   remote: number
   leave: number
@@ -39,7 +39,7 @@ export function StaffTable({ rows }: Props) {
           {rows.map(row => (
             <tr key={row.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
               <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{row.name}</td>
-              <td className="px-4 py-2.5 text-gray-400 text-[12px]">{row.title ?? '—'}</td>
+              <td className="px-4 py-2.5 text-gray-400 text-[12px]">{row.role ?? '—'}</td>
               <td className="px-4 py-2.5 text-center font-mono text-[var(--green)] font-medium">{row.office}</td>
               <td className="px-4 py-2.5 text-center font-mono text-[var(--amber)] font-medium">{row.other || '—'}</td>
               <td className="px-4 py-2.5 text-center font-mono text-[var(--blue)] font-medium">{row.remote}</td>

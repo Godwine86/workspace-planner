@@ -17,7 +17,7 @@ const STATUS_OPTS: { value: string; label: string }[] = [
 
 interface StaffForm {
   name: string
-  title: string
+  role: string
   group_id: string
   tgt_office: string
   tgt_remote: string
@@ -26,7 +26,7 @@ interface StaffForm {
 
 function defaultForm(groups: Group[]): StaffForm {
   return {
-    name: '', title: '',
+    name: '', role: '',
     group_id: groups[0]?.id ?? '',
     tgt_office: '3', tgt_remote: '2',
     pattern: { 0: 'office', 1: 'office', 2: 'office', 3: 'office', 4: 'office' },
@@ -49,7 +49,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
   function openAdd() { setForm(defaultForm(groups)); setError(''); setModal('add') }
   function openEdit(m: Staff) {
     setForm({
-      name: m.name, title: m.title ?? '',
+      name: m.name, role: m.role ?? '',
       group_id: m.group_id ?? groups[0]?.id ?? '',
       tgt_office: String(m.tgt_office ?? 3),
       tgt_remote: String(m.tgt_remote ?? 2),
@@ -64,7 +64,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
     setSaving(true); setError('')
     const payload = {
       name: form.name.trim(),
-      title: form.title.trim() || null,
+      role: form.role.trim() || null,
       group_id: form.group_id || null,
       tgt_office: parseInt(form.tgt_office) || 0,
       tgt_remote: parseInt(form.tgt_remote) || 0,
@@ -120,7 +120,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
               return (
                 <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
                   <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{m.name}</td>
-                  <td className="px-4 py-2.5 text-gray-400 text-[12px]">{m.title ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-gray-400 text-[12px]">{m.role ?? '—'}</td>
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-1.5 text-[12px]">
                       <span className="w-2 h-2 rounded-full" style={{ background: g?.color ?? '#999' }} />
@@ -153,7 +153,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Sara Ahmed" autoFocus />
           </Field>
           <Field label="Role / title">
-            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. AM" />
+            <Input value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} placeholder="e.g. AM" />
           </Field>
           <Field label="Group">
             <Select value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>

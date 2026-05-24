@@ -154,7 +154,7 @@ export function AnalyticsView({ staff, groups, seats }: Props) {
 
       // Sheet 2 — Staff Breakdown
       const s2: unknown[][] = [['Workspace Planner — Staff Breakdown'], [], ['Name', 'Role', 'In-Office Days', 'Remote Days', 'Leave Days', 'Office %']]
-      d.staffRows.forEach(r => s2.push([r.name, r.title ?? '', r.office, r.remote, r.leave, r.officePct + '%']))
+      d.staffRows.forEach(r => s2.push([r.name, r.role ?? '', r.office, r.remote, r.leave, r.officePct + '%']))
       const ws2sheet = XLSX.utils.aoa_to_sheet(s2)
       ws2sheet['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 14 }, { wch: 12 }]
       for (let c = 0; c < 6; c++) { const a = XLSX.utils.encode_cell({ r: 2, c }); if (!ws2sheet[a]) ws2sheet[a] = { t: 's', v: '' }; ws2sheet[a].s = hSt }
