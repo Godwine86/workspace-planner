@@ -57,7 +57,7 @@ export interface Group {
 export interface Staff {
   id: string
   name: string
-  title: string | null
+  role: string | null
   group_id: string | null
   tgt_office: number
   tgt_remote: number

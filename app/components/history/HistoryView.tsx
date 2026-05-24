@@ -120,7 +120,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                       <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-200">
                           {m.name}
-                          {m.title && <span className="ml-1.5 text-[11px] text-gray-400 font-normal">{m.title}</span>}
+                          {m.role && <span className="ml-1.5 text-[11px] text-gray-400 font-normal">{m.role}</span>}
                         </td>
                         {workDates.map(d => {
                           const dateStr = fmt(d)

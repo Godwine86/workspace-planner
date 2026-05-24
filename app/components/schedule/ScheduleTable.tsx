@@ -137,7 +137,7 @@ export function ScheduleTable({
                           {/* Name cell */}
                           <td className="sticky left-0 z-10 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 px-4 py-2 min-w-[160px]">
                             <div className="font-medium text-gray-900 dark:text-gray-100 text-[13px] leading-tight">{m.name}</div>
-                            {m.title && <div className="text-[11px] text-gray-400 leading-tight">{m.title}</div>}
+                            {m.role && <div className="text-[11px] text-gray-400 leading-tight">{m.role}</div>}
                             <div className="flex gap-1.5 mt-1 flex-wrap">
                               <TargetPill
                                 label="🏢"

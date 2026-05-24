@@ -36,7 +36,7 @@ export interface AnalyticsData {
   staffRows: {
     id: string
     name: string
-    title: string | null
+    role: string | null
     office: number
     remote: number
     leave: number
@@ -145,8 +145,8 @@ export function computeAnalytics(
   }))
 
   // Staff totals — DB entries only (no pattern fallback)
-  const staffMap: Record<string, { id: string; name: string; title: string | null; office: number; remote: number; leave: number; other: number }> = {}
-  staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, title: m.title, office: 0, remote: 0, leave: 0, other: 0 } })
+  const staffMap: Record<string, { id: string; name: string; role: string | null; office: number; remote: number; leave: number; other: number }> = {}
+  staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, role: m.role, office: 0, remote: 0, leave: 0, other: 0 } })
   allWorkDays.forEach(ds => {
     staff.forEach(m => {
       const raw = lookup[`${m.id}__${ds}`]
