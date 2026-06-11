@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Download, Lock } from 'lucide-react'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/client'
 import { fmt, weekStart } from '@/lib/schedule'
 import { computeAnalytics } from '@/lib/analytics'

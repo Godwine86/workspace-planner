@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useTransition } from 'react'
 import { ChevronLeft, ChevronRight, Shuffle, Download, Pin, PinOff } from 'lucide-react'
+import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import type { Staff, Group, Role } from '@/types/database'
@@ -25,6 +26,17 @@ interface Props {
   weekPlans: Record<string, { status: string }>
   holidayMap: Record<string, string>
   role: Role
+}
+
+const FULL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+// Qiddiya-themed cell styles for the weekly schedule export
+const STATUS_XLSX: Record<Status | 'holiday', { label: string; fill: string; font: string }> = {
+  office:  { label: 'Office',    fill: 'D9F2DD', font: '1A7A2A' },
+  remote:  { label: 'Remote',    fill: 'D6F0FA', font: '0F6FA0' },
+  leave:   { label: 'Off/Leave', fill: 'FFF3CD', font: '9C6500' },
+  other:   { label: 'Other',     fill: 'FDEBD3', font: 'B05A00' },
+  holiday: { label: 'Holiday',   fill: 'FBDCEF', font: 'A3006B' },
 }
 
 export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: initialWeekPlans, holidayMap, role }: Props) {
@@ -224,6 +236,93 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     setCollapsed(prev => ({ ...prev, [gid]: !prev[gid] }))
   }
 
+  // ─── Export weekly schedule ───────────────────────────────────────────────
+
+  function exportSchedule() {
+    const ws0 = weekStart(navDate)
+    const days = getWorkDays('week', ws0)
+
+    const header = ['Staff', 'Office', 'Remote', ...days.map(d => FULL_DAY_NAMES[d.getDay()])]
+    const aoa: unknown[][] = [header]
+
+    staff.forEach(m => {
+      const dayStatuses = days.map(d => {
+        const dateStr = fmt(d)
+        if (holidayMap[dateStr]) return 'holiday' as const
+        return getScheduleStatus(m, d, cache)
+      })
+      const officeCount = dayStatuses.filter(s => s === 'office').length
+      const remoteCount = dayStatuses.filter(s => s === 'remote').length
+      aoa.push([
+        m.name, officeCount, remoteCount,
+        ...dayStatuses.map(s => s ? STATUS_XLSX[s].label : ''),
+      ])
+    })
+
+    const inOfficeRow: unknown[] = ['In Office', '', '']
+    const remoteRow: unknown[] = ['Remote', '', '']
+    days.forEach(d => {
+      const dateStr = fmt(d)
+      if (holidayMap[dateStr]) { inOfficeRow.push(0); remoteRow.push(0); return }
+      inOfficeRow.push(staff.filter(m => getScheduleStatus(m, d, cache) === 'office').length)
+      remoteRow.push(staff.filter(m => getScheduleStatus(m, d, cache) === 'remote').length)
+    })
+    aoa.push(inOfficeRow, remoteRow)
+
+    const sheet = XLSX.utils.aoa_to_sheet(aoa)
+
+    // Header row
+    const headerStyle = {
+      font: { bold: true, color: { rgb: 'FFFFFF' } },
+      fill: { fgColor: { rgb: '1B2B6B' } },
+      alignment: { horizontal: 'center', vertical: 'center' },
+    }
+    for (let c = 0; c < header.length; c++) {
+      const addr = XLSX.utils.encode_cell({ r: 0, c })
+      if (sheet[addr]) sheet[addr].s = headerStyle
+    }
+
+    // Status cells
+    staff.forEach((m, i) => {
+      const r = i + 1
+      days.forEach((d, j) => {
+        const dateStr = fmt(d)
+        const st = holidayMap[dateStr] ? 'holiday' : getScheduleStatus(m, d, cache)
+        if (!st) return
+        const addr = XLSX.utils.encode_cell({ r, c: 3 + j })
+        const meta = STATUS_XLSX[st]
+        if (sheet[addr]) {
+          sheet[addr].s = {
+            fill: { fgColor: { rgb: meta.fill } },
+            font: { color: { rgb: meta.font }, bold: true },
+            alignment: { horizontal: 'center' },
+          }
+        }
+      })
+    })
+
+    // Totals rows
+    const totalsStart = staff.length + 1
+    for (let r = totalsStart; r <= totalsStart + 1; r++) {
+      for (let c = 0; c < header.length; c++) {
+        const addr = XLSX.utils.encode_cell({ r, c })
+        if (sheet[addr]) {
+          sheet[addr].s = {
+            font: { bold: true },
+            fill: { fgColor: { rgb: 'F2F2F2' } },
+            alignment: { horizontal: c >= 3 ? 'center' : 'left' },
+          }
+        }
+      }
+    }
+
+    sheet['!cols'] = [{ wch: 22 }, { wch: 8 }, { wch: 8 }, ...days.map(() => ({ wch: 12 }))]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, sheet, 'Schedule')
+    XLSX.writeFile(wb, `schedule-${fmt(ws0)}.xlsx`)
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
@@ -268,6 +367,13 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
 
         {/* Right actions */}
         <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={exportSchedule}
+            title="Export this week's schedule"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <Download size={13} /> Export
+          </button>
           {canEdit && (
             <>
               <button
