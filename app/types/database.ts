@@ -63,6 +63,8 @@ export interface Staff {
   tgt_remote: number
   /** day-of-week keyed pattern: { 0: 'office', 1: 'remote', ... } */
   pattern: Record<string, Status | null> | null
+  created_at: string
+  start_date: string // YYYY-MM-DD
 }
 
 export interface ScheduleEntry {

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field, Input, Select, Btn } from './Modal'
+import { fmt } from '@/lib/schedule'
 import type { Staff, Group, Status } from '@/types/database'
 
 const WORK_DOW = [0, 1, 2, 3, 4]
@@ -22,6 +23,7 @@ interface StaffForm {
   tgt_office: string
   tgt_remote: string
   pattern: Record<number, string>
+  start_date: string
 }
 
 function defaultForm(groups: Group[]): StaffForm {
@@ -30,6 +32,7 @@ function defaultForm(groups: Group[]): StaffForm {
     group_id: groups[0]?.id ?? '',
     tgt_office: '3', tgt_remote: '2',
     pattern: { 0: 'office', 1: 'office', 2: 'office', 3: 'office', 4: 'office' },
+    start_date: fmt(new Date()),
   }
 }
 
@@ -54,6 +57,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
       tgt_office: String(m.tgt_office ?? 3),
       tgt_remote: String(m.tgt_remote ?? 2),
       pattern: Object.fromEntries(WORK_DOW.map(d => [d, (m.pattern?.[d] as string) ?? ''])),
+      start_date: m.start_date ?? fmt(new Date()),
     })
     setError('')
     setModal(m)
@@ -69,6 +73,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
       tgt_office: parseInt(form.tgt_office) || 0,
       tgt_remote: parseInt(form.tgt_remote) || 0,
       pattern: Object.fromEntries(WORK_DOW.map(d => [d, form.pattern[d] || null])),
+      start_date: form.start_date || fmt(new Date()),
     }
 
     if (modal === 'add') {
@@ -159,6 +164,9 @@ export function StaffSection({ staff, groups, onChange }: Props) {
             <Select value={form.group_id} onChange={e => setForm(f => ({ ...f, group_id: e.target.value }))}>
               {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
             </Select>
+          </Field>
+          <Field label="Start date">
+            <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="🏢 Office days/wk">
