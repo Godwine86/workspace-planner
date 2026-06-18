@@ -45,6 +45,7 @@ function getStatus(
 ): Status | null {
   const raw = entryMap[`${staffId}__${dateStr}`]
   if (raw) return raw as Status
+  if (staff.created_at && dateStr < staff.created_at.slice(0, 10)) return null
   // History view uses pattern fallback (same as schedule — not analytics)
   const [y, mo, d] = dateStr.split('-').map(Number)
   const dow = new Date(y, mo - 1, d).getDay()

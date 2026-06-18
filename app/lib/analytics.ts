@@ -9,6 +9,9 @@ function resolveStatus(
   ds: string,
   lookup: Record<string, string>,
 ): 'office' | 'remote' | 'leave' | 'other' | null {
+  // Exclude days before the staff member joined — avoids back-dating new
+  // hires into historical analytics via their default pattern fallback.
+  if (m.created_at && ds < m.created_at.slice(0, 10)) return null
   const raw = lookup[`${m.id}__${ds}`]
   if (raw === 'office' || raw === 'remote' || raw === 'leave' || raw === 'other') return raw
   if (raw) return null  // unknown status, ignore
