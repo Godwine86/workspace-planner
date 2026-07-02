@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { STATUS_META, getScheduleStatus, isLocked, fmt, todayDate } from '@/lib/schedule'
+import { STATUS_META, getScheduleStatus, isLocked, fmt, todayDate, countsAsOffice } from '@/lib/schedule'
 import { WORKDAYS_PER_WEEK } from '@/lib/utils'
 import type { Staff, Group } from '@/types/database'
 import type { Status } from '@/types/database'
@@ -135,7 +135,7 @@ export function ScheduleTable({
                 {open && (
                   <>
                     {members.map(m => {
-                      const actualOffice = workDays.filter(d => getScheduleStatus(m, d, cache) === 'office').length
+                      const actualOffice = workDays.filter(d => countsAsOffice(getScheduleStatus(m, d, cache))).length
                       const actualRemote = workDays.filter(d => getScheduleStatus(m, d, cache) === 'remote').length
                       const tgtOffice = m.tgt_office != null ? Math.round(m.tgt_office * wip) : null
                       const tgtRemote = m.tgt_remote != null ? Math.round(m.tgt_remote * wip) : null

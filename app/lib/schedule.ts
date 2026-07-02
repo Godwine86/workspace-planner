@@ -78,6 +78,11 @@ export function nextCycleStatus(current: Status | null): Status | null {
   return CYCLE[(idx + 1) % CYCLE.length]
 }
 
+/** Fairness accounting: working from another office still counts as "in office", not remote. */
+export function countsAsOffice(status: Status | null): boolean {
+  return status === 'office' || status === 'other'
+}
+
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 export function todayDate(): Date {
@@ -153,7 +158,7 @@ export function computeReshuffle(
   staff.forEach(m => {
     weekOff[m.id] = workDays.filter(day =>
       isLocked(m, day, cache, holidayMap) &&
-      getScheduleStatus(m, day, cache) === 'office'
+      countsAsOffice(getScheduleStatus(m, day, cache))
     ).length
   })
 
