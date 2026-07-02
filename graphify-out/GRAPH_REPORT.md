@@ -1,5 +1,5 @@
 # Codebase Structure Map
-Generated on: Thu Jul  2 11:14:03 UTC 2026
+Generated on: Thu Jul  2 11:30:27 UTC 2026
 
 ## File Tree
 ```text
