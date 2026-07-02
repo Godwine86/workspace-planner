@@ -43,7 +43,7 @@ export function buildEntryCache(rows: Pick<ScheduleEntry, 'staff_id' | 'entry_da
 
 // ─── Status resolution ────────────────────────────────────────────────────────
 
-/** Schedule view: DB entry → pattern fallback → null */
+/** Schedule view: DB entry → pattern fallback (gated by start_date) → null */
 export function getScheduleStatus(
   staff: Staff,
   date: Date,
@@ -51,6 +51,7 @@ export function getScheduleStatus(
 ): Status | null {
   const entry = cache[entryKey(staff.id, date)]
   if (entry) return entry.status
+  if (staff.start_date && fmt(date) < staff.start_date) return null
   return (staff.pattern?.[date.getDay()] as Status | undefined) ?? null
 }
 
@@ -177,6 +178,7 @@ export function computeReshuffle(
 
     const candidates = staff.filter(m => {
       if (isLocked(m, day, cache, holidayMap)) return false
+      if (m.start_date && dayFmt < m.start_date) return false
       const cached = cache[entryKey(m.id, day)]
       if (cached && (cached.status === 'leave' || cached.status === 'other')) return false
       if (!cached) {
