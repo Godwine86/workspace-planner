@@ -251,7 +251,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
         if (holidayMap[dateStr]) return 'holiday' as const
         return getScheduleStatus(m, d, cache)
       })
-      const officeCount = dayStatuses.filter(s => s === 'office').length
+      const officeCount = dayStatuses.filter(s => s === 'office' || s === 'other').length
       const remoteCount = dayStatuses.filter(s => s === 'remote').length
       aoa.push([
         m.name, officeCount, remoteCount,
