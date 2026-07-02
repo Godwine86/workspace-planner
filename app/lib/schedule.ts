@@ -145,11 +145,11 @@ export interface ReshuffleChange {
 /**
  * Fair weekly rotation:
  * For each work day, score unlocked candidates by (targetRatio - weeklyOfficeCount/WORKDAYS_PER_WEEK).
- * tgt_office acts as a soft weekly cap: once a staff member's office-day count for the week
- * reaches their configured tgt_office, they're deprioritized behind anyone still under their
- * cap — only filling a seat if no under-cap candidate remains that day. Staff with no target
- * configured (tgt_office + tgt_remote === 0) are never capped.
- * Highest scorers (within the under-cap group, then the over-cap group) get office slots up to seat capacity.
+ * tgt_office is a hard weekly cap: once a staff member's office-day count for the week reaches
+ * their configured tgt_office, they never get assigned office again that week, even if seats
+ * are left unfilled as a result. Staff with no target configured (tgt_office + tgt_remote === 0)
+ * are never capped.
+ * Highest scorers among under-cap candidates get office slots up to seat capacity.
  * No cross-week debt — purely in-week fairness.
  */
 export function computeReshuffle(
@@ -209,11 +209,11 @@ export function computeReshuffle(
       .sort((a, b) => b.score - a.score)
 
     // Under-cap candidates get first crack at seats (score order); at-cap candidates
-    // only fill leftover seats as a last resort, still in score order among themselves.
+    // are never assigned office, even if that leaves seats unfilled.
     const ordered = [...scored.filter(s => s.underCap), ...scored.filter(s => !s.underCap)]
 
-    ordered.forEach(({ m }, i) => {
-      const status: Status = i < slots ? 'office' : 'remote'
+    ordered.forEach(({ m, underCap }, i) => {
+      const status: Status = i < slots && underCap ? 'office' : 'remote'
       if (status === 'office') weekOff[m.id] = (weekOff[m.id] ?? 0) + 1
 
       const patternDefault = (m.pattern?.[dow] as Status | null) ?? null
