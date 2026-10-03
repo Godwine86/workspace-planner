@@ -24,6 +24,7 @@ export function GroupsSection({ groups, staff, onChange }: Props) {
   const [form, setForm] = useState<GroupForm>({ name: '', color: PALETTE[0] })
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [reordering, setReordering] = useState(false)
   const supabase = createClient()
 
   function openAdd() { setForm({ name: '', color: PALETTE[0] }); setError(''); setModal('add') }
@@ -34,7 +35,7 @@ export function GroupsSection({ groups, staff, onChange }: Props) {
     setSaving(true); setError('')
     if (modal === 'add') {
       const { data, error: err } = await supabase.from('groups')
-        .insert({ name: form.name.trim(), color: form.color, sort_order: groups.length + 1 }).select().single()
+        .insert({ name: form.name.trim(), color: form.color, sort_order: Math.max(0, ...groups.map(x => x.sort_order ?? 0)) + 1 }).select().single()
       if (err) { setError(err.message); setSaving(false); return }
       onChange([...groups, data as Group])
     } else {
@@ -55,23 +56,48 @@ export function GroupsSection({ groups, staff, onChange }: Props) {
     onChange(groups.filter(x => x.id !== g.id))
   }
 
+  // Move a group one place up/down. Groups are then renumbered 1..n so sort_order
+  // stays unique, and only changed rows are saved.
+  async function move(g: Group, dir: -1 | 1) {
+    const list = [...groups]
+    const i = list.findIndex(x => x.id === g.id)
+    const j = i + dir
+    if (j < 0 || j >= list.length) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+    const renumbered = list.map((x, k) => ({ ...x, sort_order: k + 1 }))
+    const changed = renumbered.filter(x => groups.find(o => o.id === x.id)?.sort_order !== x.sort_order)
+
+    setReordering(true)
+    const results = await Promise.all(changed.map(x =>
+      supabase.from('groups').update({ sort_order: x.sort_order }).eq('id', x.id)
+    ))
+    setReordering(false)
+    const failed = results.find(r => r.error)
+    if (failed?.error) { alert('Could not save the new order: ' + failed.error.message); return }
+    onChange(renumbered)
+  }
+
   const isAdd = modal === 'add'
   const title = isAdd ? 'Add group' : modal ? `Edit group` : ''
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Groups</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Organise staff into teams for better visibility in the schedule.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Organise staff into teams for better visibility in the schedule. Use ↑ ↓ to set the order groups appear in on the Schedule and its export.</p>
       <div className="mb-4"><Btn variant="primary" onClick={openAdd}>+ Add group</Btn></div>
 
       {!groups.length ? (
         <p className="text-sm text-gray-400">No groups yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {groups.map(g => {
+          {groups.map((g, i) => {
             const cnt = staff.filter(m => m.group_id === g.id).length
             return (
               <div key={g.id} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+                <div className="flex gap-1 flex-shrink-0">
+                  <button onClick={() => move(g, -1)} disabled={i === 0 || reordering} title="Move up" aria-label={`Move ${g.name} up`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↑</button>
+                  <button onClick={() => move(g, 1)} disabled={i === groups.length - 1 || reordering} title="Move down" aria-label={`Move ${g.name} down`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>
+                </div>
                 <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: g.color }} />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-gray-900 dark:text-gray-100">{g.name}</div>

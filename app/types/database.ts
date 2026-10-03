@@ -52,6 +52,8 @@ export interface Group {
   id: string
   name: string
   color: string
+  /** Display position on the Schedule, its export and Settings */
+  sort_order: number
 }
 
 export interface Staff {
