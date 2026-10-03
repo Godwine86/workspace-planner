@@ -1,5 +1,5 @@
 # Codebase Structure Map
-Generated on: Sat Oct  3 14:40:30 UTC 2026
+Generated on: Sat Oct  3 16:49:52 UTC 2026
 
 ## File Tree
 ```text
@@ -44,6 +44,7 @@ Generated on: Sat Oct  3 14:40:30 UTC 2026
 ./app/supabase
 ./app/supabase/migrations
 ./app/supabase/migrations/20261003000000_week_plans_seats_snapshot.sql
+./app/supabase/migrations/20261003010000_staff_end_date.sql
 ./app/app
 ./app/app/page.tsx
 ./app/app/globals.css
