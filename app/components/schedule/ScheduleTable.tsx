@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { STATUS_META, getScheduleStatus, isLocked, fmt, todayDate, countsAsOffice } from '@/lib/schedule'
+import { STATUS_META, getScheduleStatus, isLocked, fmt, todayDate, countsAsOffice, hasLeft } from '@/lib/schedule'
 import { WORKDAYS_PER_WEEK } from '@/lib/utils'
 import type { Staff, Group } from '@/types/database'
 import type { Status } from '@/types/database'
@@ -147,6 +147,9 @@ export function ScheduleTable({
                           <td className="sticky left-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-r border-gray-200/50 dark:border-gray-700/50 px-4 py-2 min-w-[160px]">
                             <div className="font-medium text-gray-900 dark:text-gray-100 text-[13px] leading-tight">{m.name}</div>
                             {m.role && <div className="text-[11px] text-gray-400 leading-tight">{m.role}</div>}
+                            {m.end_date && (
+                              <div className="text-[10px] text-gray-400 leading-tight">Last day {m.end_date}</div>
+                            )}
                             <div className="flex gap-1.5 mt-1 flex-wrap">
                               <TargetPill
                                 label="🏢"
@@ -168,6 +171,14 @@ export function ScheduleTable({
                             const isToday = day.getTime() === today.getTime()
                             const locked  = isLocked(m, day, cache, holidayMap)
                             const st      = getScheduleStatus(m, day, cache)
+
+                            if (hasLeft(m, dateStr)) {
+                              return (
+                                <td key={dateStr} className="px-1 py-1.5 text-center border-r border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02]" title={`Left after ${m.end_date}`}>
+                                  <span className="text-[9px] font-semibold text-gray-400">Left</span>
+                                </td>
+                              )
+                            }
 
                             if (holName) {
                               return (

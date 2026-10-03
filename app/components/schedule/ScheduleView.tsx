@@ -10,7 +10,7 @@ import type { Status } from '@/types/database'
 import {
   buildEntryCache, getScheduleStatus, isLocked, nextCycleStatus,
   fmt, weekStart, getWorkDays, periodLabel, computeReshuffle,
-  todayDate, entryKey, orderStaffByGroup,
+  todayDate, entryKey, orderStaffByGroup, hasLeft, employedSince,
 } from '@/lib/schedule'
 import type { EntryCache } from '@/lib/schedule'
 import type { SyncState } from './SyncBadge'
@@ -53,8 +53,9 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   const supabase = createClient()
 
   const workDays = getWorkDays(view, navDate)
-  // Same order for the table and its export: by group, then each person's position within it
-  const orderedStaff = orderStaffByGroup(staff, groups)
+  // Same order for the table and its export: by group, then each person's position within it.
+  // People who left before this period aren't shown.
+  const orderedStaff = orderStaffByGroup(employedSince(staff, fmt(workDays[0] ?? navDate)), groups)
 
   // Published weeks keep the seat count they were published with; drafts use the current setting
   const seatsFor = (day: Date) => weekPlans[fmt(weekStart(day))]?.seats ?? initialSeats
@@ -138,7 +139,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     const [y, mo, d] = dateStr.split('-').map(Number)
     const day = new Date(y, mo - 1, d)
     const m = staff.find(x => x.id === staffId)
-    if (!m || isLocked(m, day, cache, holidayMap)) return
+    if (!m || isLocked(m, day, cache, holidayMap) || hasLeft(m, dateStr)) return
 
     const cur = getScheduleStatus(m, day, cache)
     const next = nextCycleStatus(cur)
@@ -177,7 +178,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     const [y, mo, d] = dateStr.split('-').map(Number)
     const day = new Date(y, mo - 1, d)
     const m = staff.find(x => x.id === staffId)
-    if (!m) return
+    if (!m || hasLeft(m, dateStr)) return
 
     const cur = getScheduleStatus(m, day, cache)
     const wasLocked = isLocked(m, day, cache, holidayMap)
@@ -246,11 +247,12 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   function exportSchedule() {
     const ws0 = weekStart(navDate)
     const days = getWorkDays('week', ws0)
+    const rows = employedSince(orderedStaff, fmt(ws0))
 
     const header = ['Staff', 'Office', 'Remote', ...days.map(d => FULL_DAY_NAMES[d.getDay()])]
     const aoa: unknown[][] = [header]
 
-    orderedStaff.forEach(m => {
+    rows.forEach(m => {
       const dayStatuses = days.map(d => {
         const dateStr = fmt(d)
         if (holidayMap[dateStr]) return 'holiday' as const
@@ -288,7 +290,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     }
 
     // Status cells
-    orderedStaff.forEach((m, i) => {
+    rows.forEach((m, i) => {
       const r = i + 1
       days.forEach((d, j) => {
         const dateStr = fmt(d)
@@ -307,7 +309,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     })
 
     // Totals rows
-    const totalsStart = orderedStaff.length + 1
+    const totalsStart = rows.length + 1
     for (let r = totalsStart; r <= totalsStart + 1; r++) {
       for (let c = 0; c < header.length; c++) {
         const addr = XLSX.utils.encode_cell({ r, c })

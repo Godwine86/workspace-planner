@@ -1,5 +1,5 @@
 import type { Staff } from '@/types/database'
-import { fmt, weekStart } from './schedule'
+import { fmt, weekStart, hasLeft, employedSince } from './schedule'
 import { WORK_DOW } from './utils'
 
 // Resolve status with pattern fallback — same as History view.
@@ -12,6 +12,8 @@ function resolveStatus(
   // Exclude days before the staff member's start date — avoids back-dating
   // new hires into historical analytics via their default pattern fallback.
   if (m.start_date && ds < m.start_date) return null
+  // Likewise nothing after their last working day; days before it still count.
+  if (hasLeft(m, ds)) return null
   const raw = lookup[`${m.id}__${ds}`]
   if (raw === 'office' || raw === 'remote' || raw === 'leave' || raw === 'other') return raw
   if (raw) return null  // unknown status, ignore
@@ -172,7 +174,8 @@ export function computeAnalytics(
 
   // Staff totals — explicit entry or pattern fallback (matches History view)
   const staffMap: Record<string, { id: string; name: string; role: string | null; office: number; remote: number; leave: number; other: number }> = {}
-  staff.forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, role: m.role, office: 0, remote: 0, leave: 0, other: 0 } })
+  // People who left before the range don't get an all-zero row
+  employedSince(staff, allWorkDays[0] ?? sorted[0].week_start).forEach(m => { staffMap[m.id] = { id: m.id, name: m.name, role: m.role, office: 0, remote: 0, leave: 0, other: 0 } })
   allWorkDays.forEach(ds => {
     staff.forEach(m => {
       const st = resolveStatus(m, ds, lookup)

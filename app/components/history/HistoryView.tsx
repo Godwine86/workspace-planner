@@ -1,6 +1,6 @@
 import type React from 'react'
 import { cn } from '@/lib/utils'
-import { fmt } from '@/lib/schedule'
+import { fmt, hasLeft, employedSince } from '@/lib/schedule'
 import { STATUS_META } from '@/lib/schedule'
 import type { Staff, Group } from '@/types/database'
 import type { Status } from '@/types/database'
@@ -45,6 +45,7 @@ function getStatus(
   staff: Staff,
   entryMap: Record<string, string>,
 ): Status | null {
+  if (hasLeft(staff, dateStr)) return null
   const raw = entryMap[`${staffId}__${dateStr}`]
   if (raw) return raw as Status
   if (staff.start_date && dateStr < staff.start_date) return null
@@ -89,6 +90,8 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
 
           const isPublished = week.status === 'published'
           const weekSeats = week.seats ?? seats
+          // Anyone who left before this week started isn't listed; earlier weeks still show them
+          const weekStaff = employedSince(staff, week.weekStart)
           const pubDate = week.publishedAt
             ? new Date(week.publishedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
             : null
@@ -129,7 +132,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                     </tr>
                   </thead>
                   <tbody>
-                    {staff.map(m => (
+                    {weekStaff.map(m => (
                       <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800">
                         <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-200">
                           {m.name}
@@ -166,7 +169,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                       {workDates.map(d => {
                         const dateStr = fmt(d)
                         const isHol = !!holidayMap[dateStr]
-                        const count = isHol ? 0 : staff.filter(m => {
+                        const count = isHol ? 0 : weekStaff.filter(m => {
                           const st = getStatus(m.id, dateStr, m, entryMap)
                           return st === 'office'
                         }).length
@@ -190,7 +193,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                       {workDates.map(d => {
                         const dateStr = fmt(d)
                         const isHol = !!holidayMap[dateStr]
-                        const count = isHol ? 0 : staff.filter(m => {
+                        const count = isHol ? 0 : weekStaff.filter(m => {
                           const st = getStatus(m.id, dateStr, m, entryMap)
                           return st === 'other'
                         }).length
