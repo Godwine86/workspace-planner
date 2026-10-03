@@ -15,7 +15,8 @@ interface Props {
   staff: Staff[]
   groups: Group[]
   workDays: Date[]
-  seats: number
+  /** Seat count for a given day (published weeks keep their own snapshot) */
+  seatsFor: (day: Date) => number
   cache: EntryCache
   holidayMap: Record<string, string>
   collapsed: Record<string, boolean>
@@ -41,7 +42,7 @@ const STATUS_CELL_STYLE: Record<Status, React.CSSProperties> = {
 }
 
 export function ScheduleTable({
-  staff, groups, workDays, seats, cache, holidayMap,
+  staff, groups, workDays, seatsFor, cache, holidayMap,
   collapsed, canEdit, view,
   onToggleGroup, onCycleStatus, onToggleLock,
 }: Props) {
@@ -238,6 +239,7 @@ export function ScheduleTable({
                           )
                         }
                         const n = members.filter(m => getScheduleStatus(m, day, cache) === 'office').length
+                        const seats = seatsFor(day)
                         return (
                           <td
                             key={dateStr}

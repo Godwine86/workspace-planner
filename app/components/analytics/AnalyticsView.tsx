@@ -48,13 +48,13 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
     try {
       const { data: allPubW, error: wErr } = await supabase
         .from('week_plans')
-        .select('week_start')
+        .select('week_start,seats')
         .eq('status', 'published')
         .order('week_start', { ascending: true })
 
       if (wErr) throw wErr
 
-      const pubInRange = (allPubW as { week_start: string }[] ?? []).filter(w => {
+      const pubInRange = (allPubW as { week_start: string; seats: number | null }[] ?? []).filter(w => {
         const we = new Date(w.week_start + 'T00:00:00'); we.setDate(we.getDate() + 6)
         return we >= rangeStart  // only filter how far back; future published weeks are included
       })
@@ -92,11 +92,11 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
   async function exportReport(scope: 'range' | 'all') {
     setExporting(true)
     try {
-      let pubWeeks: { week_start: string; published_at?: string }[]
+      let pubWeeks: { week_start: string; published_at?: string; seats?: number | null }[]
 
       if (scope === 'all') {
         const { data } = await supabase.from('week_plans')
-          .select('week_start,published_at')
+          .select('week_start,published_at,seats')
           .eq('status', 'published')
           .order('week_start', { ascending: true })
           .limit(52)
@@ -105,7 +105,7 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
         const endDate = new Date()
         const rangeStart = new Date(endDate); rangeStart.setDate(rangeStart.getDate() - range * 7)
         const { data: allW } = await supabase.from('week_plans')
-          .select('week_start,published_at').eq('status', 'published').order('week_start')
+          .select('week_start,published_at,seats').eq('status', 'published').order('week_start')
         pubWeeks = (allW as typeof pubWeeks ?? []).filter(w => {
           const ws = new Date(w.week_start + 'T00:00:00')
           const we = new Date(ws); we.setDate(ws.getDate() + 6)
@@ -162,7 +162,7 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
 
       // Sheet 3 — Day of Week
       const s3: unknown[][] = [['Workspace Planner — Attendance by Day of Week'], [], ['Day', 'Avg In-Office', 'Avg Remote', 'Avg Utilization']]
-      d.dowData.forEach(r => s3.push([r.day, r.office, r.remote, seats > 0 ? Math.round(r.office / seats * 100) + '%' : '—']))
+      d.dowData.forEach(r => s3.push([r.day, r.office, r.remote, r.util + '%']))
       const ws3 = XLSX.utils.aoa_to_sheet(s3)
       ws3['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 14 }, { wch: 18 }]
       for (let c = 0; c < 4; c++) { const a = XLSX.utils.encode_cell({ r: 2, c }); if (!ws3[a]) ws3[a] = { t: 's', v: '' }; ws3[a].s = hSt }

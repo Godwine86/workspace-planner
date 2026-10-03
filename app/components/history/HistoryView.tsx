@@ -26,6 +26,8 @@ export interface WeekData {
   weekStart: string
   status: 'published' | 'draft'
   publishedAt: string | null
+  /** Seats snapshotted at publish; null for drafts (use the current setting) */
+  seats: number | null
   entries: { staff_id: string; entry_date: string; status: string }[]
 }
 
@@ -86,6 +88,7 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
           week.entries.forEach(e => { entryMap[`${e.staff_id}__${e.entry_date}`] = e.status })
 
           const isPublished = week.status === 'published'
+          const weekSeats = week.seats ?? seats
           const pubDate = week.publishedAt
             ? new Date(week.publishedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
             : null
@@ -171,9 +174,9 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
                           <td key={dateStr} className={cn(
                             'text-center py-2 text-[12px] font-bold font-mono border-r border-gray-100 dark:border-gray-800 last:border-r-0',
                             isHol ? 'text-[var(--pink)]' :
-                            count >= seats ? 'text-red-600 dark:text-red-400' : 'text-[var(--green)]'
+                            count >= weekSeats ? 'text-red-600 dark:text-red-400' : 'text-[var(--green)]'
                           )}>
-                            {isHol ? 'HOL' : `${count}/${seats}`}
+                            {isHol ? 'HOL' : `${count}/${weekSeats}`}
                           </td>
                         )
                       })}

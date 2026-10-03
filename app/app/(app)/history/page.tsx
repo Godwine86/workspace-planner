@@ -13,7 +13,7 @@ export default async function HistoryPage() {
     { data: settings },
     { data: holidays },
   ] = await Promise.all([
-    supabase.from('week_plans').select('week_start,status,published_at').order('week_start', { ascending: false }).limit(52),
+    supabase.from('week_plans').select('week_start,status,published_at,seats').order('week_start', { ascending: false }).limit(52),
     supabase.from('staff').select('*').order('sort_order'),
     supabase.from('groups').select('*').order('sort_order'),
     supabase.from('app_settings').select('*'),
@@ -30,7 +30,7 @@ export default async function HistoryPage() {
   ) || 7
 
   // Fetch entries for all weeks in parallel
-  const weekList = (plans as { week_start: string; status: string; published_at: string | null }[] | null) ?? []
+  const weekList = (plans as { week_start: string; status: string; published_at: string | null; seats: number | null }[] | null) ?? []
 
   const weekEntries = await Promise.all(
     weekList.map(async plan => {
@@ -45,6 +45,7 @@ export default async function HistoryPage() {
         weekStart: plan.week_start,
         status: plan.status as 'published' | 'draft',
         publishedAt: plan.published_at,
+        seats: plan.seats,
         entries: (entries as { staff_id: string; entry_date: string; status: string }[] | null) ?? [],
       } satisfies WeekData
     })

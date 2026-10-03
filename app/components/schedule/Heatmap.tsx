@@ -9,12 +9,13 @@ const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct'
 interface Props {
   staff: Staff[]
   workDays: Date[]
-  seats: number
+  /** Seat count for a given day (published weeks keep their own snapshot) */
+  seatsFor: (day: Date) => number
   cache: EntryCache
   holidayMap: Record<string, string>
 }
 
-export function Heatmap({ staff, workDays, seats, cache, holidayMap }: Props) {
+export function Heatmap({ staff, workDays, seatsFor, cache, holidayMap }: Props) {
   const today = todayDate()
 
   return (
@@ -66,6 +67,7 @@ export function Heatmap({ staff, workDays, seats, cache, holidayMap }: Props) {
           }
 
           const n = staff.filter(m => getScheduleStatus(m, day, cache) === 'office').length
+          const seats = seatsFor(day)
           const pct = seats > 0 ? n / seats : 0
           const isEmpty = n === 0
           const isOver = n > seats

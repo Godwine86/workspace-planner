@@ -43,8 +43,8 @@ export interface AnalyticsData {
   // Weekly utilization line chart data
   weeklyUtil: { label: string; util: number }[]
 
-  // Day-of-week bar chart data
-  dowData: { day: string; office: number; remote: number; other: number }[]
+  // Day-of-week bar chart data (util = integer % of that day's seats)
+  dowData: { day: string; office: number; remote: number; other: number; util: number }[]
 
   // Staff breakdown table
   staffRows: {
@@ -60,10 +60,15 @@ export interface AnalyticsData {
   }[]
 }
 
+/**
+ * `seats` is the current setting; it's only used for weeks that carry no
+ * snapshot of their own (`week_plans.seats`, set when the week is published),
+ * so changing the setting doesn't rewrite utilization for past weeks.
+ */
 export function computeAnalytics(
   staff: Staff[],
   seats: number,
-  publishedWeeks: { week_start: string; published_at?: string }[],
+  publishedWeeks: { week_start: string; published_at?: string; seats?: number | null }[],
   entries: { staff_id: string; entry_date: string; status: string }[],
   holidayMap: Record<string, string> = {},
 ): AnalyticsData {
@@ -77,6 +82,9 @@ export function computeAnalytics(
 
   const sorted = [...publishedWeeks].sort((a, b) => a.week_start.localeCompare(b.week_start))
   const publishedSet = new Set(sorted.map(w => w.week_start))
+  const weekSeats: Record<string, number> = {}
+  sorted.forEach(w => { weekSeats[w.week_start] = w.seats ?? seats })
+  const seatsOn = (ds: string) => weekSeats[sunKey(ds)] ?? seats
 
   // Build entry lookup: "staffId__YYYY-MM-DD" → raw status string
   const lookup: Record<string, string> = {}
@@ -113,34 +121,35 @@ export function computeAnalytics(
   })
 
   // Summary KPIs
-  let totalOffice = 0, totalRemote = 0, totalOther = 0
+  let totalOffice = 0, totalRemote = 0, totalOther = 0, totalSeats = 0
   allWorkDays.forEach(ds => {
     totalOffice += dailyMap[ds].office
     totalRemote += dailyMap[ds].remote
     totalOther  += dailyMap[ds].other
+    totalSeats  += seatsOn(ds)
   })
   const n = allWorkDays.length
   const avgDailyOffice = n > 0 ? Math.round(totalOffice / n * 10) / 10 : 0
-  const avgUtilization = n > 0 && seats > 0 ? Math.round(totalOffice / n / seats * 100) : 0
+  const avgUtilization = totalSeats > 0 ? Math.round(totalOffice / totalSeats * 100) : 0
 
   // Weekly utilization for line chart
   const weeklyUtil = sorted.map(({ week_start }) => {
     const ws = new Date(week_start + 'T00:00:00')
     const we = new Date(ws); we.setDate(ws.getDate() + 4)
-    let wO = 0, wD = 0
+    let wO = 0, wS = 0
     allWorkDays.forEach(ds => {
       const d = new Date(ds + 'T00:00:00')
-      if (d >= ws && d <= we) { wD++; wO += dailyMap[ds].office }
+      if (d >= ws && d <= we) { wS += seatsOn(ds); wO += dailyMap[ds].office }
     })
-    const util = wD > 0 && seats > 0 ? Math.round(wO / wD / seats * 100) : 0
+    const util = wS > 0 ? Math.round(wO / wS * 100) : 0
     const label = ws.getDate() + '/' + String(ws.getMonth() + 1).padStart(2, '0')
     return { label, util }
   })
 
   // Day-of-week averages for bar chart
-  const dowAcc: Record<number, { o: number; r: number; ot: number; n: number }> = {
-    0: { o: 0, r: 0, ot: 0, n: 0 }, 1: { o: 0, r: 0, ot: 0, n: 0 }, 2: { o: 0, r: 0, ot: 0, n: 0 },
-    3: { o: 0, r: 0, ot: 0, n: 0 }, 4: { o: 0, r: 0, ot: 0, n: 0 },
+  const dowAcc: Record<number, { o: number; r: number; ot: number; n: number; s: number }> = {
+    0: { o: 0, r: 0, ot: 0, n: 0, s: 0 }, 1: { o: 0, r: 0, ot: 0, n: 0, s: 0 }, 2: { o: 0, r: 0, ot: 0, n: 0, s: 0 },
+    3: { o: 0, r: 0, ot: 0, n: 0, s: 0 }, 4: { o: 0, r: 0, ot: 0, n: 0, s: 0 },
   }
   allWorkDays.forEach(ds => {
     const dow = new Date(ds + 'T00:00:00').getDay()
@@ -149,6 +158,7 @@ export function computeAnalytics(
       dowAcc[dow].o  += dailyMap[ds].office
       dowAcc[dow].r  += dailyMap[ds].remote
       dowAcc[dow].ot += dailyMap[ds].other
+      dowAcc[dow].s  += seatsOn(ds)
     }
   })
   const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']
@@ -157,6 +167,7 @@ export function computeAnalytics(
     office: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].o  / dowAcc[dow].n * 10) / 10 : 0,
     remote: dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].r  / dowAcc[dow].n * 10) / 10 : 0,
     other:  dowAcc[dow].n > 0 ? Math.round(dowAcc[dow].ot / dowAcc[dow].n * 10) / 10 : 0,
+    util:   dowAcc[dow].s > 0 ? Math.round(dowAcc[dow].o / dowAcc[dow].s * 100) : 0,
   }))
 
   // Staff totals — explicit entry or pattern fallback (matches History view)

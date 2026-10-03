@@ -79,6 +79,8 @@ export interface WeekPlan {
   id: string
   week_start: string // YYYY-MM-DD (Sunday)
   is_published: boolean
+  /** Seat count snapshotted when the week was published; null while draft */
+  seats: number | null
 }
 
 export interface RotationDebt {
