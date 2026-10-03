@@ -65,6 +65,8 @@ export interface Staff {
   pattern: Record<string, Status | null> | null
   created_at: string
   start_date: string // YYYY-MM-DD
+  /** Display position; staff are listed by group order, then this */
+  sort_order: number
 }
 
 export interface ScheduleEntry {

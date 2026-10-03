@@ -10,7 +10,7 @@ import type { Status } from '@/types/database'
 import {
   buildEntryCache, getScheduleStatus, isLocked, nextCycleStatus,
   fmt, weekStart, getWorkDays, periodLabel, computeReshuffle,
-  todayDate, entryKey,
+  todayDate, entryKey, orderStaffByGroup,
 } from '@/lib/schedule'
 import type { EntryCache } from '@/lib/schedule'
 import type { SyncState } from './SyncBadge'
@@ -53,6 +53,8 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   const supabase = createClient()
 
   const workDays = getWorkDays(view, navDate)
+  // Same order for the table and its export: by group, then each person's position within it
+  const orderedStaff = orderStaffByGroup(staff, groups)
 
   // Published weeks keep the seat count they were published with; drafts use the current setting
   const seatsFor = (day: Date) => weekPlans[fmt(weekStart(day))]?.seats ?? initialSeats
@@ -248,7 +250,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     const header = ['Staff', 'Office', 'Remote', ...days.map(d => FULL_DAY_NAMES[d.getDay()])]
     const aoa: unknown[][] = [header]
 
-    staff.forEach(m => {
+    orderedStaff.forEach(m => {
       const dayStatuses = days.map(d => {
         const dateStr = fmt(d)
         if (holidayMap[dateStr]) return 'holiday' as const
@@ -286,7 +288,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     }
 
     // Status cells
-    staff.forEach((m, i) => {
+    orderedStaff.forEach((m, i) => {
       const r = i + 1
       days.forEach((d, j) => {
         const dateStr = fmt(d)
@@ -305,7 +307,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     })
 
     // Totals rows
-    const totalsStart = staff.length + 1
+    const totalsStart = orderedStaff.length + 1
     for (let r = totalsStart; r <= totalsStart + 1; r++) {
       for (let c = 0; c < header.length; c++) {
         const addr = XLSX.utils.encode_cell({ r, c })
@@ -413,7 +415,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
 
       {/* Schedule table */}
       <ScheduleTable
-        staff={staff}
+        staff={orderedStaff}
         groups={groups}
         workDays={workDays}
         seatsFor={seatsFor}

@@ -1,4 +1,4 @@
-import type { Staff, ScheduleEntry, Holiday } from '@/types/database'
+import type { Staff, Group, ScheduleEntry, Holiday } from '@/types/database'
 import type { Status } from '@/types/database'
 import { WORKDAYS_PER_WEEK, WORK_DOW } from './utils'
 
@@ -114,6 +114,17 @@ export function monthDays(date: Date): Date[] {
     cursor.setDate(cursor.getDate() + 1)
   }
   return days
+}
+
+/**
+ * Staff in display order: by group (in the order of `groups`, unassigned or
+ * unknown groups last), then by sort_order within the group. The Schedule
+ * table, its export and the Settings staff list all use this order.
+ */
+export function orderStaffByGroup(staff: Staff[], groups: Pick<Group, 'id'>[]): Staff[] {
+  const gpos = new Map(groups.map((g, i) => [g.id, i]))
+  const pos = (m: Staff) => gpos.get(m.group_id ?? '') ?? groups.length
+  return [...staff].sort((a, b) => pos(a) - pos(b) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
 }
 
 export function getViewDays(view: 'week' | 'month', navDate: Date): Date[] {
