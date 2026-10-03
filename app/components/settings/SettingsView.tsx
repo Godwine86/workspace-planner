@@ -37,28 +37,32 @@ export function SettingsView({ staff: initialStaff, groups: initialGroups, holid
   const canEdit = role === 'admin'
 
   return (
-    <div className="flex flex-1 min-h-0">
-      {/* Sidebar */}
-      <aside className="w-48 shrink-0 border-r border-gray-200 dark:border-gray-800 py-4">
-        {NAV.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setSection(id)}
-            className={cn(
-              'w-full flex items-center gap-2.5 px-5 py-2.5 text-[13px] font-medium text-left transition-colors border-r-2',
-              section === id
-                ? 'text-[var(--green)] bg-green-50 dark:bg-green-950/30 border-r-[var(--green)]'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-900 border-r-transparent hover:text-gray-900 dark:hover:text-gray-100'
-            )}
-          >
-            <Icon size={15} />
-            {label}
-          </button>
-        ))}
-      </aside>
+    <div className="flex flex-col md:flex-row flex-1 min-h-0 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-5 gap-5">
+      {/* Section nav: sidebar on desktop, scrollable tabs on small screens */}
+      <nav aria-label="Settings sections" className="md:w-56 shrink-0">
+        <span className="eyebrow hidden md:block px-3 mb-2">Settings</span>
+        <div className="flex md:flex-col gap-1 overflow-x-auto pb-1 md:pb-0">
+          {NAV.map(({ id, label, icon: Icon }) => {
+            const active = section === id
+            return (
+              <button
+                key={id}
+                onClick={() => setSection(id)}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'shrink-0 flex items-center gap-2.5 h-10 px-3 rounded-[10px] text-[13.5px] font-medium text-left transition-colors duration-150',
+                  active ? 'bg-accent-soft text-ink' : 'text-ink-3 hover:text-ink hover:bg-[var(--panel-2)]',
+                )}
+              >
+                <Icon size={16} className={active ? 'text-accent' : undefined} aria-hidden />
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </nav>
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="flex-1 min-w-0 panel p-5 sm:p-7 enter" key={section}>
         {section === 'staff' && (
           <StaffSection staff={staff} groups={groups} onChange={setStaff} />
         )}
@@ -74,7 +78,7 @@ export function SettingsView({ staff: initialStaff, groups: initialGroups, holid
         {section === 'general' && (
           <GeneralSection initialSeats={seats} />
         )}
-      </main>
+      </div>
     </div>
   )
 }

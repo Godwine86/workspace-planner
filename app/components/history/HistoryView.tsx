@@ -1,26 +1,16 @@
-import type React from 'react'
+'use client'
+
+import { useState } from 'react'
+import { ChevronDown, CircleCheck, PencilLine, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { fmt, hasLeft, employedSince } from '@/lib/schedule'
-import { STATUS_META } from '@/lib/schedule'
+import { fmt, hasLeft, employedSince, orderStaffByGroup } from '@/lib/schedule'
 import type { Staff, Group } from '@/types/database'
 import type { Status } from '@/types/database'
+import { StatusChip } from '@/components/ui/StatusChip'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu']
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
-// Qiddiya palette — office=green, remote=cyan, leave=gray, other=orange
-const STATUS_STYLE: Record<Status, React.CSSProperties> = {
-  office: { background: 'rgba(57,181,74,0.15)',  color: '#1a7a2a' },
-  remote: { background: 'rgba(41,171,226,0.15)', color: '#0f6fa0' },
-  leave:  { background: 'rgba(148,163,184,0.12)', color: '#64748b' },
-  other:  { background: 'rgba(247,148,29,0.15)',  color: '#b05a00' },
-}
-const STATUS_CLS: Record<Status, string> = {
-  office: '',
-  remote: '',
-  leave:  '',
-  other:  '',
-}
+const CAP_VAR = { ok: 'var(--cap-ok)', full: 'var(--cap-full)', over: 'var(--cap-over)' } as const
 
 export interface WeekData {
   weekStart: string
@@ -56,34 +46,41 @@ function getStatus(
 }
 
 export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) {
+  // Most recent week starts expanded
+  const [open, setOpen] = useState<Record<string, boolean>>(() => (weeks[0] ? { [weeks[0].weekStart]: true } : {}))
+
   if (!weeks.length) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center p-12">
-        <div className="text-4xl">📋</div>
-        <div className="font-semibold text-gray-700 dark:text-gray-300">No published weeks yet</div>
-        <div className="text-sm text-gray-400 max-w-sm">
-          Use the <strong>Publish</strong> button on the Schedule page to lock and archive a week.
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="panel flex flex-col items-center gap-3 text-center p-10 max-w-md">
+          <span className="grid place-items-center w-14 h-14 rounded-2xl bg-accent-soft text-accent"><History size={26} aria-hidden /></span>
+          <div className="font-display text-[17px] font-semibold text-ink">No weeks yet</div>
+          <div className="text-sm text-ink-2">Use <strong>Publish</strong> on the Schedule page to lock and archive a week.</div>
         </div>
       </div>
     )
   }
 
+  const published = weeks.filter(w => w.status === 'published').length
+
   return (
-    <div className="flex flex-col flex-1 px-6 py-5">
-      <div className="text-xs text-gray-400 mb-4">
-        {weeks.length} week{weeks.length !== 1 ? 's' : ''} in history
-        &nbsp;·&nbsp; <span className="text-[var(--green)]">🔒 Published</span> weeks are locked
-        &nbsp;·&nbsp; <span className="text-gray-400">✏️ Draft</span> weeks are still editable
+    <div className="flex flex-col flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-5 sm:pb-8">
+      <div className="mb-5">
+        <span className="eyebrow">History</span>
+        <h1 className="mt-1 font-display text-[24px] sm:text-[28px] font-semibold tracking-tight text-ink">Past weeks</h1>
+        <p className="mt-1 text-[13px] text-ink-3">
+          {weeks.length} week{weeks.length !== 1 ? 's' : ''} · {published} published (locked) · {weeks.length - published} draft (still editable)
+        </p>
       </div>
 
-      <div className="flex flex-col gap-4">
-        {weeks.map(week => {
+      <div className="flex flex-col gap-3">
+        {weeks.map((week, wi) => {
           const ws = new Date(week.weekStart + 'T00:00:00')
           const workDates = Array.from({ length: 5 }, (_, i) => {
             const d = new Date(ws); d.setDate(ws.getDate() + i); return d
           })
-          const weLabel = new Date(ws); weLabel.setDate(ws.getDate() + 4)
-          const label = `${ws.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weLabel.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+          const we = new Date(ws); we.setDate(ws.getDate() + 4)
+          const label = `${ws.getDate()} ${MONTH_NAMES[ws.getMonth()]} – ${we.getDate()} ${MONTH_NAMES[we.getMonth()]} ${we.getFullYear()}`
 
           const entryMap: Record<string, string> = {}
           week.entries.forEach(e => { entryMap[`${e.staff_id}__${e.entry_date}`] = e.status })
@@ -91,123 +88,119 @@ export function HistoryView({ weeks, staff, groups, seats, holidayMap }: Props) 
           const isPublished = week.status === 'published'
           const weekSeats = week.seats ?? seats
           // Anyone who left before this week started isn't listed; earlier weeks still show them
-          const weekStaff = employedSince(staff, week.weekStart)
+          const weekStaff = orderStaffByGroup(employedSince(staff, week.weekStart), groups)
           const pubDate = week.publishedAt
             ? new Date(week.publishedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
             : null
 
+          const daily = workDates.map(d => {
+            const dateStr = fmt(d)
+            const hol = holidayMap[dateStr]
+            const count = (s: Status) => hol ? 0 : weekStaff.filter(m => getStatus(m.id, dateStr, m, entryMap) === s).length
+            const office = count('office')
+            return { d, dateStr, hol, office, other: count('other'), state: office > weekSeats ? 'over' as const : office === weekSeats ? 'full' as const : 'ok' as const }
+          })
+          const workingDays = daily.filter(x => !x.hol)
+          const util = workingDays.length && weekSeats ? Math.round(workingDays.reduce((a, x) => a + x.office, 0) / (workingDays.length * weekSeats) * 100) : 0
+          const isOpen = !!open[week.weekStart]
+
           return (
-            <div key={week.weekStart} className="glass rounded-xl overflow-hidden transition-transform duration-150 hover:-translate-y-0.5" style={{ boxShadow: '0 2px 16px rgba(27,43,107,0.06)' }}>
-              {/* Week header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 flex-wrap">
-                <span className="font-semibold text-[14px] text-gray-900 dark:text-gray-100">{label}</span>
-                <span
-                  className="text-[11px] px-2 py-0.5 rounded-full border font-medium"
-                  style={isPublished
-                    ? { background: 'rgba(57,181,74,0.12)', color: 'var(--green)', borderColor: 'rgba(57,181,74,0.3)' }
-                    : undefined
-                  }
-                >
-                  {isPublished ? '🔒 Published' : '✏️ Draft'}
-                </span>
-                {pubDate && (
-                  <span className="text-[11px] text-gray-400 ml-auto">Published {pubDate}</span>
-                )}
-              </div>
+            <section key={week.weekStart} className="panel overflow-hidden enter" style={{ animationDelay: `${Math.min(wi, 8) * 30}ms` }}>
+              {/* Summary row */}
+              <button
+                onClick={() => setOpen(o => ({ ...o, [week.weekStart]: !o[week.weekStart] }))}
+                aria-expanded={isOpen}
+                className="w-full flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4 text-left hover:bg-[var(--panel-2)] transition-colors duration-150"
+              >
+                <div className="flex items-center gap-3 min-w-[230px]">
+                  <ChevronDown size={16} className={cn('text-ink-3 transition-transform duration-200', !isOpen && '-rotate-90')} aria-hidden />
+                  <div>
+                    <div className="font-display text-[16px] font-semibold text-ink">{label}</div>
+                    <div className="mt-0.5 flex items-center gap-2 text-[12px] text-ink-3">
+                      <span className={cn('inline-flex items-center gap-1 h-5 px-1.5 rounded-full text-[11px] font-semibold', isPublished ? 'chip-office' : 'chip-leave')}>
+                        {isPublished ? <CircleCheck size={11} aria-hidden /> : <PencilLine size={11} aria-hidden />}
+                        {isPublished ? 'Published' : 'Draft'}
+                      </span>
+                      {pubDate && <span>{pubDate}</span>}
+                    </div>
+                  </div>
+                </div>
 
-              {/* Schedule table */}
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse text-[12px]">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-900">
-                      <th className="px-4 py-2 text-left text-[11px] font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 min-w-[150px]">
-                        Staff
-                      </th>
-                      {workDates.map(d => (
-                        <th key={fmt(d)} className="px-2 py-2 text-center text-[11px] font-medium text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800 min-w-[60px]">
-                          {DAY_NAMES[d.getDay()]}<br />
-                          <span className="font-normal text-[10px]">{d.getDate()} {MONTH_NAMES[d.getMonth()]}</span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {weekStaff.map(m => (
-                      <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800">
-                        <td className="px-4 py-2 font-medium text-gray-800 dark:text-gray-200">
-                          {m.name}
-                          {m.role && <span className="ml-1.5 text-[11px] text-gray-400 font-normal">{m.role}</span>}
-                        </td>
-                        {workDates.map(d => {
-                          const dateStr = fmt(d)
-                          const isHoliday = !!holidayMap[dateStr]
-                          const st = getStatus(m.id, dateStr, m, entryMap)
-                          return (
-                            <td key={dateStr} className="px-1 py-2 text-center border-r border-gray-100 dark:border-gray-800 last:border-r-0">
-                              {isHoliday ? (
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono" style={{ background: 'rgba(236,0,140,0.12)', color: 'var(--pink)' }}>
-                                  HOL
-                                </span>
-                              ) : st ? (
-                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold font-mono" style={STATUS_STYLE[st]}>
-                                  {STATUS_META[st].short}
-                                </span>
-                              ) : (
-                                <span className="text-gray-300 dark:text-gray-600 text-[10px]">—</span>
-                              )}
-                            </td>
-                          )
-                        })}
+                {/* Attendance strip */}
+                <div className="flex items-end gap-1.5 flex-1 min-w-[260px]" aria-label="Seats used per day">
+                  {daily.map(x => (
+                    <div key={x.dateStr} className="flex-1 min-w-[44px] text-center">
+                      <div className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-3">{DAY_NAMES[x.d.getDay()]}</div>
+                      {x.hol ? (
+                        <div className="mt-1 text-[11px] font-semibold" style={{ color: 'var(--holiday-fg)' }}>Holiday</div>
+                      ) : (
+                        <>
+                          <div className="mt-0.5 font-mono tabular-nums text-[12px]" style={{ color: x.state === 'ok' ? 'var(--ink-2)' : CAP_VAR[x.state] }}>
+                            {x.office}<span className="text-ink-3">/{weekSeats}</span>
+                          </div>
+                          <div className="mt-1 h-1 rounded-full bg-[var(--panel-2)] overflow-hidden" aria-hidden>
+                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, x.office / Math.max(1, weekSeats) * 100)}%`, background: CAP_VAR[x.state] }} />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-right ml-auto">
+                  <div className="font-display text-[22px] font-semibold leading-none tabular-nums text-ink">{util}%</div>
+                  <div className="text-[11.5px] text-ink-3 mt-1">seat use</div>
+                </div>
+              </button>
+
+              {/* Detail table */}
+              {isOpen && (
+                <div className="overflow-x-auto border-t border-line">
+                  <table className="w-full border-separate border-spacing-0 text-[13px]">
+                    <thead>
+                      <tr>
+                        <th className="px-5 py-2.5 text-left border-b border-line bg-[var(--panel-2)] min-w-[180px]"><span className="eyebrow">Team</span></th>
+                        {workDates.map(d => (
+                          <th key={fmt(d)} className="px-2 py-2.5 text-center border-b border-line bg-[var(--panel-2)] min-w-[100px]">
+                            <span className="eyebrow">{DAY_NAMES[d.getDay()]} {d.getDate()}</span>
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-
-                    {/* In office count row (seats) */}
-                    <tr className="bg-gray-50 dark:bg-gray-900/60">
-                      <td className="px-4 py-2 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                        In office
-                      </td>
-                      {workDates.map(d => {
-                        const dateStr = fmt(d)
-                        const isHol = !!holidayMap[dateStr]
-                        const count = isHol ? 0 : weekStaff.filter(m => {
-                          const st = getStatus(m.id, dateStr, m, entryMap)
-                          return st === 'office'
-                        }).length
-                        return (
-                          <td key={dateStr} className={cn(
-                            'text-center py-2 text-[12px] font-bold font-mono border-r border-gray-100 dark:border-gray-800 last:border-r-0',
-                            isHol ? 'text-[var(--pink)]' :
-                            count >= weekSeats ? 'text-red-600 dark:text-red-400' : 'text-[var(--green)]'
-                          )}>
-                            {isHol ? 'HOL' : `${count}/${weekSeats}`}
+                    </thead>
+                    <tbody>
+                      {weekStaff.map(m => (
+                        <tr key={m.id} className="hover:bg-[var(--panel-2)] transition-colors duration-150">
+                          <td className="px-5 py-2 border-b border-line">
+                            <span className="font-medium text-ink">{m.name}</span>
+                            {m.role && <span className="ml-2 text-[12px] text-ink-3">{m.role}</span>}
                           </td>
-                        )
-                      })}
-                    </tr>
-
-                    {/* Other location count row */}
-                    <tr className="bg-gray-50 dark:bg-gray-900/60 border-t border-gray-100 dark:border-gray-800">
-                      <td className="px-4 py-2 text-[11px] font-semibold text-[var(--amber)]">
-                        Other location
-                      </td>
-                      {workDates.map(d => {
-                        const dateStr = fmt(d)
-                        const isHol = !!holidayMap[dateStr]
-                        const count = isHol ? 0 : weekStaff.filter(m => {
-                          const st = getStatus(m.id, dateStr, m, entryMap)
-                          return st === 'other'
-                        }).length
-                        return (
-                          <td key={dateStr} className="text-center py-2 text-[12px] font-bold font-mono text-[var(--amber)] border-r border-gray-100 dark:border-gray-800 last:border-r-0">
-                            {isHol ? '—' : count > 0 ? count : '—'}
+                          {workDates.map(d => {
+                            const dateStr = fmt(d)
+                            const hol = holidayMap[dateStr]
+                            const st = getStatus(m.id, dateStr, m, entryMap)
+                            return (
+                              <td key={dateStr} className="px-1 py-1.5 text-center border-b border-line">
+                                {hol ? <StatusChip status="holiday" title={hol} className="opacity-80" />
+                                  : st ? <StatusChip status={st} className="min-w-[84px]" />
+                                  : <span className="text-ink-3">—</span>}
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      ))}
+                      <tr className="bg-[var(--panel-2)]">
+                        <td className="px-5 py-2.5 text-[12.5px] font-semibold text-ink-2">Other site</td>
+                        {daily.map(x => (
+                          <td key={x.dateStr} className="text-center py-2.5 font-mono tabular-nums text-[12.5px] text-ink-2">
+                            {x.hol ? '—' : x.other || '—'}
                           </td>
-                        )
-                      })}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
           )
         })}
       </div>

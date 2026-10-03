@@ -37,27 +37,27 @@ export function GeneralSection({ initialSeats }: Props) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">General settings</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Configure workspace capacity and preferences.</p>
+        <h2 className="font-display text-[20px] font-semibold text-ink mb-1">General settings</h2>
+        <p className="text-sm text-ink-3">Configure workspace capacity and preferences.</p>
       </div>
 
       {/* Seats */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-1">Office capacity</h3>
-        <p className="text-xs text-gray-400 mb-3">Total desks available in the office per day.</p>
+      <div className="bg-[var(--panel-2)] border border-line rounded-xl p-5">
+        <h3 className="font-medium text-ink mb-1">Office capacity</h3>
+        <p className="text-xs text-ink-3 mb-3">Total desks available in the office per day.</p>
         <div className="flex items-end gap-3">
           <Field label="Available seats per day">
             <Input type="number" min={1} max={999} value={seats} onChange={e => setSeats(e.target.value)} className="max-w-[120px]" />
           </Field>
           <Btn variant="primary" onClick={saveSeats} disabled={saving}>
-            {saving ? 'Saving…' : saved ? '✓ Saved' : 'Save seats'}
+            {saving ? 'Saving…' : saved ? 'Saved' : 'Save seats'}
           </Btn>
         </div>
       </div>
 
       {/* Account */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-5">
-        <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3">Your account</h3>
+      <div className="bg-[var(--panel-2)] border border-line rounded-xl p-5">
+        <h3 className="font-medium text-ink mb-3">Your account</h3>
         <Btn onClick={() => { setPwd({ new: '', confirm: '' }); setPwdErr(''); setPwdOpen(true) }}>
           Change password
         </Btn>
@@ -74,7 +74,7 @@ export function GeneralSection({ initialSeats }: Props) {
           <Field label="Confirm password">
             <Input type="password" value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))} placeholder="Repeat" />
           </Field>
-          {pwdErr && <p className="text-sm text-red-600 dark:text-red-400">{pwdErr}</p>}
+          {pwdErr && <p className="text-sm text-[var(--danger-fg)]">{pwdErr}</p>}
         </Modal>
       )}
     </div>

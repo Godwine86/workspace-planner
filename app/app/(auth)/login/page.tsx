@@ -29,19 +29,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-      <div className="w-full max-w-sm space-y-6 p-8 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-10 h-10 rounded-full bg-[var(--green)] flex items-center justify-center text-white font-bold text-sm">
+    <div className="min-h-dvh flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-sm panel panel-glow p-8 enter">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span
+            className="grid place-items-center w-12 h-12 rounded-2xl text-white text-[13px] font-bold tracking-tight"
+            style={{ background: 'var(--brand-grad)', boxShadow: '0 10px 30px -8px var(--glow)' }}
+          >
             CDU
+          </span>
+          <div>
+            <h1 className="font-display text-[22px] font-semibold tracking-tight text-ink">Workspace Planner</h1>
+            <p className="mt-1 text-sm text-ink-3">Sign in to plan the office week</p>
           </div>
-          <h1 className="text-xl font-semibold">Workspace Planner</h1>
-          <p className="text-sm text-gray-500">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="mt-8 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="email">Email</label>
+            <label className="text-[13px] font-medium text-ink-2" htmlFor="email">Email</label>
             <input
               id="email"
               type="email"
@@ -49,12 +54,12 @@ export default function LoginPage() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
+              className="field"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium" htmlFor="password">Password</label>
+            <label className="text-[13px] font-medium text-ink-2" htmlFor="password">Password</label>
             <input
               id="password"
               type="password"
@@ -62,19 +67,15 @@ export default function LoginPage() {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-transparent focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
+              className="field"
             />
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            <p role="alert" className="text-sm rounded-lg px-3 py-2 border border-[var(--danger-edge)] bg-[var(--danger-bg)] text-[var(--danger-fg)]">{error}</p>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 rounded-lg bg-[var(--green)] text-white text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
+          <button type="submit" disabled={loading} className="btn btn-primary w-full h-11 text-[14px]">
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
         </form>

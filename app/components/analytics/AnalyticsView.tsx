@@ -1,13 +1,13 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Download, Lock } from 'lucide-react'
+import { Download, Lock, ChartNoAxesColumn, CircleAlert } from 'lucide-react'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/client'
 import { fmt, weekStart } from '@/lib/schedule'
 import { computeAnalytics } from '@/lib/analytics'
 import { AnalyticsKPIs } from './AnalyticsKPIs'
-import { WeeklyUtilChart, DowChart } from './Charts'
+import { WeeklyUtilChart, DowChart, GroupChart } from './Charts'
 import { StaffTable } from './StaffTable'
 import type { Staff, Group } from '@/types/database'
 
@@ -32,6 +32,7 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
   const [error, setError]       = useState<string | null>(null)
   const [data, setData]         = useState<ReturnType<typeof computeAnalytics> | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [groupData, setGroupData] = useState<{ name: string; color: string; office: number; other: number; remote: number }[]>([])
 
   const supabase = createClient()
 
@@ -78,14 +79,25 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
 
       if (eErr) throw eErr
 
+      const rows = (entries as { staff_id: string; entry_date: string; status: string }[] | null) ?? []
       const activeStaff = gid ? staff.filter(m => m.group_id === gid) : staff
-      setData(computeAnalytics(activeStaff, seats, pubInRange, entries as { staff_id: string; entry_date: string; status: string }[] ?? [], holidayMap))
+      const result = computeAnalytics(activeStaff, seats, pubInRange, rows, holidayMap)
+      setData(result)
+
+      // Average days per person per week, for each group
+      const weeksWorked = result.publishedWorkDays / 5
+      setGroupData(groups.map(g => {
+        const d = computeAnalytics(staff.filter(m => m.group_id === g.id), seats, pubInRange, rows, holidayMap)
+        const people = d.staffRows.length
+        const per = (n: number) => people && weeksWorked ? Math.round(n / people / weeksWorked * 10) / 10 : 0
+        return { name: g.name, color: g.color, office: per(d.totalOffice), other: per(d.totalOther), remote: per(d.totalRemote) }
+      }).filter(g => g.office + g.other + g.remote > 0))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics')
     } finally {
       setLoading(false)
     }
-  }, [staff, seats])
+  }, [staff, groups, seats])
 
   useEffect(() => { load(range, groupId) }, [range, groupId, load])
 
@@ -178,83 +190,71 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
   }
 
   return (
-    <div className="flex flex-col flex-1 px-6 py-5">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 mb-6 flex-wrap">
-        <select
-          value={range}
-          onChange={e => setRange(Number(e.target.value))}
-          className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
-        >
-          {RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-
-        <select
-          value={groupId}
-          onChange={e => setGroupId(e.target.value)}
-          className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
-        >
-          <option value="">All groups</option>
-          {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-        </select>
-
+    <div className="flex flex-col flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-5 sm:pb-8">
+      {/* Header + filters */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 mb-5">
+        <div>
+          <span className="eyebrow">Analytics</span>
+          <h1 className="mt-1 font-display text-[24px] sm:text-[28px] font-semibold tracking-tight text-ink">Attendance & seat use</h1>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="sr-only" htmlFor="an-range">Time range</label>
+          <select id="an-range" value={range} onChange={e => setRange(Number(e.target.value))} className="field h-9 w-auto text-[13px] pr-8">
+            {RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <label className="sr-only" htmlFor="an-group">Group</label>
+          <select id="an-group" value={groupId} onChange={e => setGroupId(e.target.value)} className="field h-9 w-auto text-[13px] pr-8">
+            <option value="">All groups</option>
+            {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+          </select>
+        </div>
         <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={() => exportReport('range')}
-            disabled={exporting || !data?.publishedWeekCount}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
-          >
-            <Download size={13} /> Export range
+          <button onClick={() => exportReport('range')} disabled={exporting || !data?.publishedWeekCount} className="btn">
+            <Download size={15} /> Export range
           </button>
-          <button
-            onClick={() => exportReport('all')}
-            disabled={exporting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-40 transition-colors"
-          >
-            <Download size={13} /> Export all-time
+          <button onClick={() => exportReport('all')} disabled={exporting} className="btn">
+            <Download size={15} /> <span className="hidden sm:inline">Export</span> all-time
           </button>
         </div>
       </div>
 
-      {/* Error */}
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-          {error}
+        <div role="alert" className="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl border border-[var(--danger-edge)] bg-[var(--danger-bg)] text-sm text-[var(--danger-fg)]">
+          <CircleAlert size={16} aria-hidden /> {error}
+          <button onClick={() => load(range, groupId)} className="btn btn-sm ml-auto">Retry</button>
         </div>
       )}
 
-      {/* Loading */}
+      {/* Loading skeleton */}
       {loading && (
-        <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
-          Loading analytics…
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && !error && data && data.publishedWeekCount === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center">
-          <div className="text-4xl">📊</div>
-          <div className="font-semibold text-gray-700 dark:text-gray-300">No published weeks in this range</div>
-          <div className="text-sm text-gray-400 max-w-sm">
-            Use the <strong>Publish</strong> button on the Schedule page to lock and archive a week.
-            Analytics only counts data from published weeks.
+        <div aria-busy="true" aria-label="Loading analytics">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 mb-5">
+            {[0, 1, 2, 3].map(i => <div key={i} className="skeleton h-[124px] rounded-2xl" />)}
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="skeleton h-[280px] rounded-2xl" /><div className="skeleton h-[280px] rounded-2xl" />
           </div>
         </div>
       )}
 
-      {/* Analytics content */}
+      {!loading && !error && data && data.publishedWeekCount === 0 && (
+        <div className="panel flex-1 flex flex-col items-center justify-center gap-3 text-center p-10">
+          <span className="grid place-items-center w-14 h-14 rounded-2xl bg-accent-soft text-accent"><ChartNoAxesColumn size={26} aria-hidden /></span>
+          <div className="font-display text-[17px] font-semibold text-ink">No published weeks in this range</div>
+          <div className="text-sm text-ink-2 max-w-sm">
+            Use <strong>Publish</strong> on the Schedule page to lock a week. Analytics only counts published weeks.
+          </div>
+        </div>
+      )}
+
       {!loading && !error && data && data.publishedWeekCount > 0 && (
         <>
-          {/* Info bar */}
-          <div className="flex items-center gap-2 mb-5 px-4 py-2.5 glass rounded-lg text-xs text-gray-500 dark:text-gray-400">
-            <Lock size={12} className="text-[var(--green)] flex-shrink-0" />
-            <span>
-              Based on <strong className="text-gray-700 dark:text-gray-300">{data.publishedWeekCount} published week{data.publishedWeekCount !== 1 ? 's' : ''}</strong>
-              {data.rangeLabel && <> &nbsp;·&nbsp; {data.rangeLabel}</>}
-            </span>
+          <div className="mb-4 inline-flex w-fit items-center gap-2 h-7 px-3 rounded-full border border-line bg-[var(--panel)] text-[12px] text-ink-2">
+            <Lock size={12} className="text-[var(--office-fg)]" aria-hidden />
+            Based on <strong className="text-ink">{data.publishedWeekCount} published week{data.publishedWeekCount !== 1 ? 's' : ''}</strong>
+            {data.rangeLabel && <span className="text-ink-3">· {data.rangeLabel}</span>}
           </div>
 
-          {/* KPIs */}
           <AnalyticsKPIs
             totalOffice={data.totalOffice}
             totalRemote={data.totalRemote}
@@ -264,31 +264,34 @@ export function AnalyticsView({ staff, groups, seats, holidayMap }: Props) {
             publishedWorkDays={data.publishedWorkDays}
           />
 
-          {/* Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-            <div className="glass rounded-xl p-4" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                Weekly seat utilization
-              </h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <section className="panel p-5 enter">
+              <h2 className="font-display text-[15px] font-semibold text-ink">Weekly seat utilization</h2>
+              <p className="text-[12.5px] text-ink-3 mb-3">Share of seats used per week; dashed line is full capacity</p>
               <WeeklyUtilChart data={data.weeklyUtil} />
-            </div>
-            <div className="glass rounded-xl p-4" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                Average attendance by day of week
-              </h3>
+            </section>
+            <section className="panel p-5 enter" style={{ animationDelay: '40ms' }}>
+              <h2 className="font-display text-[15px] font-semibold text-ink">By day of week</h2>
+              <p className="text-[12.5px] text-ink-3 mb-3">Average people per day</p>
               <DowChart data={data.dowData} />
-            </div>
+            </section>
           </div>
 
-          {/* Staff table */}
-          <div className="glass rounded-xl overflow-hidden" style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}>
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Staff attendance breakdown
-              </h3>
+          {!groupId && groupData.length > 1 && (
+            <section className="panel p-5 mb-4 enter">
+              <h2 className="font-display text-[15px] font-semibold text-ink">By group</h2>
+              <p className="text-[12.5px] text-ink-3 mb-3">Average days per person per week</p>
+              <GroupChart data={groupData} />
+            </section>
+          )}
+
+          <section className="panel overflow-hidden enter">
+            <div className="px-5 py-4 border-b border-line">
+              <h2 className="font-display text-[15px] font-semibold text-ink">Staff attendance</h2>
+              <p className="text-[12.5px] text-ink-3">Click a column to sort</p>
             </div>
             <StaffTable rows={data.staffRows} />
-          </div>
+          </section>
         </>
       )}
     </div>

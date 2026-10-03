@@ -44,9 +44,9 @@ export function UsersSection({ staff }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Users &amp; access</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Control who can view or edit the planner.</p>
-      <p className="text-xs text-gray-400 mb-4">
+      <h2 className="font-display text-[20px] font-semibold text-ink mb-1">Users &amp; access</h2>
+      <p className="text-sm text-ink-3 mb-1">Control who can view or edit the planner.</p>
+      <p className="text-xs text-ink-3 mb-4">
         <strong>Admin</strong> — full access &nbsp;·&nbsp; <strong>Editor</strong> — edit schedule &nbsp;·&nbsp; <strong>Viewer</strong> — read only
       </p>
 
@@ -54,28 +54,28 @@ export function UsersSection({ staff }: Props) {
         <Btn variant="primary" onClick={() => setInviteOpen(true)}>+ Invite user</Btn>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+            <tr className="bg-[var(--panel-2)] border-b border-line">
               {['User', 'Linked staff member', 'Role', ''].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-left eyebrow">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400">Loading…</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-ink-3">Loading…</td></tr>
             ) : !users.length ? (
-              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-400">No users yet. Click Invite user to add team members.</td></tr>
+              <tr><td colSpan={4} className="px-4 py-8 text-center text-sm text-ink-3">No users yet. Click Invite user to add team members.</td></tr>
             ) : users.map(u => (
-              <tr key={u.id} className="border-b border-gray-100 dark:border-gray-800">
-                <td className="px-4 py-2.5 font-mono text-[11px] text-gray-500">{u.user_id.slice(0, 12)}…</td>
+              <tr key={u.id} className="border-b border-line">
+                <td className="px-4 py-2.5 font-mono text-[11px] text-ink-3">{u.user_id.slice(0, 12)}…</td>
                 <td className="px-4 py-2.5">
                   <select
                     value={u.staff_id ?? ''}
                     onChange={e => updateUser(u.user_id, 'staff_id', e.target.value)}
-                    className="text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-[var(--green)]"
+                    className="field h-8 w-auto text-[13px]"
                   >
                     <option value="">— unlinked —</option>
                     {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -85,7 +85,7 @@ export function UsersSection({ staff }: Props) {
                   <select
                     value={u.role}
                     onChange={e => updateUser(u.user_id, 'role', e.target.value)}
-                    className="text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-[var(--green)]"
+                    className="field h-8 w-auto text-[13px]"
                   >
                     <option value="admin">Admin</option>
                     <option value="editor">Editor</option>
@@ -93,7 +93,7 @@ export function UsersSection({ staff }: Props) {
                   </select>
                 </td>
                 <td className="px-4 py-2.5">
-                  <button onClick={() => removeUser(u.user_id)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                  <button onClick={() => removeUser(u.user_id)} className="btn btn-sm btn-danger">
                     Remove
                   </button>
                 </td>
@@ -107,11 +107,11 @@ export function UsersSection({ staff }: Props) {
         <Modal title="Invite a user" onClose={() => setInviteOpen(false)} footer={
           <Btn variant="primary" onClick={() => setInviteOpen(false)}>Got it</Btn>
         }>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p className="text-sm text-ink-2 leading-relaxed">
             Go to <strong>Supabase → Authentication → Users → Add user → Create new user</strong>.
             Enter their email and a temporary password. Share the credentials privately.
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          <p className="text-sm text-ink-2 leading-relaxed">
             Once they sign in, they&apos;ll appear in the Users &amp; Access table where you can assign their role and link them to a staff member.
           </p>
         </Modal>

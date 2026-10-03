@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowUp, ArrowDown, Pencil, UserMinus, Trash2, Plus } from 'lucide-react'
+import { RowMenu } from '@/components/ui/RowMenu'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field, Input, Select, Btn } from './Modal'
 import { fmt, orderStaffByGroup } from '@/lib/schedule'
@@ -146,43 +148,43 @@ export function StaffSection({ staff, groups, onChange }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Team members</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Manage staff, their groups, and weekly office/remote targets. Use ↑ ↓ to set the order names appear in on the Schedule and its export.</p>
+      <h2 className="font-display text-[20px] font-semibold text-ink mb-1">Team members</h2>
+      <p className="text-sm text-ink-3 mb-4">Manage staff, their groups, and weekly office/remote targets. Use ↑ ↓ to set the order names appear in on the Schedule and its export.</p>
       <div className="mb-4">
-        <Btn variant="primary" onClick={openAdd}>+ Add staff member</Btn>
+        <Btn variant="primary" onClick={openAdd}><Plus size={15} /> Add staff member</Btn>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-              {['Order', 'Name', 'Role', 'Group', 'Office tgt/wk', 'Remote tgt/wk', ''].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+            <tr className="bg-[var(--panel-2)] border-b border-line">
+              {['Order', 'Name', 'Role', 'Group', 'Office / wk', 'Remote / wk', ''].map(h => (
+                <th key={h} className="px-4 py-2.5 text-left eyebrow whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!staff.length ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">No staff yet.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-ink-3">No staff yet.</td></tr>
             ) : ordered.map((m, i) => {
               const g = groups.find(g => g.id === m.group_id)
               const canUp   = i > 0 && ordered[i - 1].group_id === m.group_id
               const canDown = i < ordered.length - 1 && ordered[i + 1].group_id === m.group_id
               return (
-                <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                <tr key={m.id} className="border-b border-line hover:bg-[var(--panel-2)] transition-colors">
                   <td className="px-2 py-2.5 whitespace-nowrap">
-                    <button onClick={() => move(m, -1)} disabled={!canUp || reordering} title="Move up within group" aria-label={`Move ${m.name} up`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed mr-1 transition-colors">↑</button>
-                    <button onClick={() => move(m, 1)} disabled={!canDown || reordering} title="Move down within group" aria-label={`Move ${m.name} down`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>
+                    <button onClick={() => move(m, -1)} disabled={!canUp || reordering} title="Move up within group" aria-label={`Move ${m.name} up`} className="btn btn-sm btn-icon disabled:opacity-30 mr-1"><ArrowUp size={14} /></button>
+                    <button onClick={() => move(m, 1)} disabled={!canDown || reordering} title="Move down within group" aria-label={`Move ${m.name} down`} className="btn btn-sm btn-icon disabled:opacity-30"><ArrowDown size={14} /></button>
                   </td>
-                  <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">
+                  <td className="px-4 py-2.5 font-medium text-ink">
                     {m.name}
                     {m.end_date && (
-                      <span className="ml-2 text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" title="Last working day">
+                      <span className="ml-2 text-[11px] font-medium px-1.5 py-0.5 rounded-full chip-leave" title="Last working day">
                         Left · {m.end_date}
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400 text-[12px]">{m.role ?? '—'}</td>
+                  <td className="px-4 py-2.5 text-ink-3 text-[12px]">{m.role ?? '—'}</td>
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-1.5 text-[12px]">
                       <span className="w-2 h-2 rounded-full" style={{ background: g?.color ?? '#999' }} />
@@ -191,12 +193,15 @@ export function StaffSection({ staff, groups, onChange }: Props) {
                   </td>
                   <td className="px-4 py-2.5 text-center font-mono text-[12px]">{m.tgt_office ?? '—'}</td>
                   <td className="px-4 py-2.5 text-center font-mono text-[12px]">{m.tgt_remote ?? '—'}</td>
-                  <td className="px-4 py-2.5 whitespace-nowrap">
-                    <button onClick={() => openEdit(m)} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mr-1.5 transition-colors">Edit</button>
-                    {!m.end_date && (
-                      <button onClick={() => markLeft(m)} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mr-1.5 transition-colors">Mark as left</button>
-                    )}
-                    <button onClick={() => remove(m)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors" title="Permanently delete (erases their history)">Delete</button>
+                  <td className="px-4 py-2.5 whitespace-nowrap text-right">
+                    <button onClick={() => openEdit(m)} className="btn btn-sm mr-1.5"><Pencil size={13} /> Edit</button>
+                    <RowMenu
+                      label={`More actions for ${m.name}`}
+                      items={[
+                        ...(!m.end_date ? [{ label: 'Mark as left', icon: UserMinus, onSelect: () => markLeft(m) }] : []),
+                        { label: 'Delete permanently', icon: Trash2, onSelect: () => remove(m), danger: true },
+                      ]}
+                    />
                   </td>
                 </tr>
               )
@@ -232,22 +237,23 @@ export function StaffSection({ staff, groups, onChange }: Props) {
             <Input type="date" value={form.end_date} min={form.start_date || undefined} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="🏢 Office days/wk">
+            <Field label="Office days / week">
               <Input type="number" min={0} max={5} value={form.tgt_office} onChange={e => setForm(f => ({ ...f, tgt_office: e.target.value }))} />
             </Field>
-            <Field label="🏠 Remote days/wk">
+            <Field label="Remote days / week">
               <Input type="number" min={0} max={5} value={form.tgt_remote} onChange={e => setForm(f => ({ ...f, tgt_remote: e.target.value }))} />
             </Field>
           </div>
-          <Field label="Default pattern (Sun – Thu)">
+          <Field label="Default pattern (Sun – Thu)" group>
             <div className="grid grid-cols-5 gap-1.5">
               {WORK_DOW.map(d => (
                 <div key={d} className="flex flex-col gap-1">
-                  <span className="text-[10px] font-medium text-gray-500 text-center">{DOW_NAMES[d]}</span>
+                  <span className="text-[11px] font-medium text-ink-3 text-center" aria-hidden>{DOW_NAMES[d]}</span>
                   <select
+                    aria-label={`${DOW_NAMES[d]} default`}
                     value={form.pattern[d] ?? ''}
                     onChange={e => setForm(f => ({ ...f, pattern: { ...f.pattern, [d]: e.target.value } }))}
-                    className="text-[11px] px-1 py-1.5 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-[var(--green)]"
+                    className="field h-9 px-1 text-[12px]"
                   >
                     {STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -255,7 +261,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
               ))}
             </div>
           </Field>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-[var(--danger-fg)]">{error}</p>}
         </Modal>
       )}
     </div>

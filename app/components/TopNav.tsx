@@ -1,10 +1,12 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Calendar, BarChart2, Clock, Settings } from 'lucide-react'
+import { Calendar, BarChart2, Clock, Settings, Search } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { UserMenu } from './UserMenu'
+import { CommandPalette, type PaletteStaff } from './CommandPalette'
 import { cn } from '@/lib/utils'
 import type { Role } from '@/types/database'
 
@@ -18,68 +20,107 @@ interface Props {
   name: string
   email: string
   role: Role
+  staff: PaletteStaff[]
 }
 
-export function TopNav({ name, email, role }: Props) {
+export function TopNav({ name, email, role, staff }: Props) {
   const pathname = usePathname()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const closePalette = useCallback(() => setPaletteOpen(false), [])
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen(o => !o) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const tabs = role === 'admin'
     ? [...TABS, { href: '/settings', label: 'Settings', icon: Settings } as const]
     : TABS
 
   return (
-    <nav className="sticky top-0 z-50 flex flex-col glass dark:glass border-b border-white/20 dark:border-white/5"
-      style={{ boxShadow: '0 1px 24px rgba(27,43,107,0.08)' }}>
-      {/* Main bar */}
-      <div className="flex items-center gap-0 px-7 h-[52px]">
-        {/* Brand */}
-        <div className="flex items-center gap-2.5 pr-5 border-r border-gray-200/60 dark:border-white/10 mr-4 shrink-0">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="28" height="28" rx="6" fill="var(--primary)" />
-            <text x="14" y="20" textAnchor="middle" fontFamily="DM Sans, Arial, sans-serif" fontWeight="700" fontSize="11" fill="white" letterSpacing="-0.5">CDU</text>
-          </svg>
-          <span className="text-[13.5px] font-semibold text-[var(--primary)] dark:text-blue-200 whitespace-nowrap tracking-tight">
-            Workspace Planner
-          </span>
-        </div>
+    <>
+      <nav className="sticky top-0 z-50 border-b border-line bg-[var(--panel)] backdrop-blur-xl backdrop-saturate-150" aria-label="Main">
+        <div className="flex items-center gap-3 px-4 sm:px-6 h-[60px] max-w-[1600px] mx-auto">
+          {/* Brand */}
+          <Link href="/schedule" className="flex items-center gap-2.5 shrink-0 mr-2 sm:mr-4" aria-label="Workspace Planner home">
+            <span className="grid place-items-center w-8 h-8 rounded-[10px] text-white text-[10.5px] font-bold tracking-tight"
+              style={{ background: 'var(--brand-grad)', boxShadow: '0 4px 16px -4px var(--glow)' }}>
+              CDU
+            </span>
+            <span className="font-display text-[15px] font-semibold tracking-tight text-ink whitespace-nowrap">
+              Workspace <span className="text-ink-3 font-medium">Planner</span>
+            </span>
+          </Link>
 
-        {/* Tabs */}
-        <div className="flex gap-px flex-1">
+          {/* Tabs (desktop) */}
+          <div className="hidden sm:flex items-center gap-1 flex-1">
+            {tabs.map(({ href, label, icon: Icon }) => {
+              const active = pathname.startsWith(href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'relative flex items-center gap-2 h-9 px-3.5 rounded-[10px] text-[13.5px] transition-colors duration-150',
+                    active ? 'bg-accent-soft text-ink font-semibold' : 'text-ink-3 hover:text-ink hover:bg-[var(--panel-2)]',
+                  )}
+                >
+                  <Icon size={15} className={active ? 'text-accent' : undefined} aria-hidden />
+                  {label}
+                  {active && <span className="absolute -bottom-[13px] left-3 right-3 h-[2px] rounded-full" style={{ background: 'var(--brand-grad)', boxShadow: '0 0 12px var(--glow)' }} />}
+                </Link>
+              )
+            })}
+          </div>
+
+          {/* Right side */}
+          <div className="flex items-center gap-2 ml-auto shrink-0">
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="btn h-9 gap-2 text-ink-3 sm:w-56 sm:justify-start"
+              aria-label="Search or jump to (Command K)"
+            >
+              <Search size={15} aria-hidden />
+              <span className="hidden sm:inline flex-1 text-left">Search or jump to…</span>
+              <span className="hidden sm:inline-flex gap-0.5"><span className="kbd">⌘</span><span className="kbd">K</span></span>
+            </button>
+            <ThemeToggle />
+            <UserMenu name={name} email={email} role={role} />
+          </div>
+        </div>
+        <div className="h-[2px] w-full opacity-80" style={{ background: 'var(--rainbow)' }} />
+      </nav>
+
+      {/* Bottom tab bar (phones) */}
+      <nav
+        className="sm:hidden fixed bottom-0 inset-x-0 z-50 border-t border-line bg-[var(--panel)] backdrop-blur-xl backdrop-saturate-150 pb-[env(safe-area-inset-bottom)]"
+        aria-label="Main (mobile)"
+      >
+        <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
           {tabs.map(({ href, label, icon: Icon }) => {
             const active = pathname.startsWith(href)
             return (
               <Link
                 key={href}
                 href={href}
-                className={cn(
-                  'relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-[13px] transition-all duration-150',
-                  active
-                    ? 'font-semibold text-[var(--primary)] dark:text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/60 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-gray-100'
-                )}
+                aria-current={active ? 'page' : undefined}
+                className={cn('flex flex-col items-center justify-center gap-1 h-16 text-[11px] font-medium', active ? 'text-accent' : 'text-ink-3')}
               >
-                <Icon size={13} />
+                <span className={cn('grid place-items-center w-12 h-7 rounded-full transition-colors duration-150', active && 'bg-accent-soft')}>
+                  <Icon size={18} aria-hidden />
+                </span>
                 {label}
-                {active && (
-                  <span
-                    className="absolute bottom-[-1px] left-1.5 right-1.5 h-[2.5px] rounded-t-sm"
-                    style={{ background: 'var(--primary)' }}
-                  />
-                )}
               </Link>
             )
           })}
         </div>
+      </nav>
 
-        {/* Right side */}
-        <div className="flex items-center gap-2 ml-auto shrink-0">
-          <ThemeToggle />
-          <UserMenu name={name} email={email} role={role} />
-        </div>
-      </div>
-
-      {/* Rainbow underline stripe */}
-      <div className="h-[3px] w-full" style={{ background: 'var(--rainbow)' }} />
-    </nav>
+      {paletteOpen && <CommandPalette staff={staff} isAdmin={role === 'admin'} onClose={closePalette} />}
+    </>
   )
 }
