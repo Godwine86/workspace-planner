@@ -6,11 +6,12 @@ import { WORKDAYS_PER_WEEK, WORK_DOW } from './utils'
 
 export const CYCLE: (Status | null)[] = [null, 'office', 'remote', 'leave', 'other']
 
+// "short" avoids OFF for Office, which reads as "day off"
 export const STATUS_META: Record<Status, { label: string; short: string }> = {
-  office: { label: 'Office',    short: 'OFF' },
-  remote: { label: 'Remote',    short: 'REM' },
-  leave:  { label: 'Off/Leave', short: 'LVE' },
-  other:  { label: 'Other',     short: 'OTH' },
+  office: { label: 'Office',       short: 'OFC' },
+  remote: { label: 'Remote',       short: 'REM' },
+  leave:  { label: 'Leave',        short: 'LV'  },
+  other:  { label: 'Other site',   short: 'OTH' },
 }
 
 // ─── Cache key ────────────────────────────────────────────────────────────────

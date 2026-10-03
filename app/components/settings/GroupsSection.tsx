@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { ArrowUp, ArrowDown, Pencil, Trash2, Plus } from 'lucide-react'
+import { RowMenu } from '@/components/ui/RowMenu'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field, Input, Btn } from './Modal'
 import type { Staff, Group } from '@/types/database'
@@ -82,29 +84,29 @@ export function GroupsSection({ groups, staff, onChange }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Groups</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Organise staff into teams for better visibility in the schedule. Use ↑ ↓ to set the order groups appear in on the Schedule and its export.</p>
-      <div className="mb-4"><Btn variant="primary" onClick={openAdd}>+ Add group</Btn></div>
+      <h2 className="font-display text-[20px] font-semibold text-ink mb-1">Groups</h2>
+      <p className="text-sm text-ink-3 mb-4">Organise staff into teams for better visibility in the schedule. Use ↑ ↓ to set the order groups appear in on the Schedule and its export.</p>
+      <div className="mb-4"><Btn variant="primary" onClick={openAdd}><Plus size={15} /> Add group</Btn></div>
 
       {!groups.length ? (
-        <p className="text-sm text-gray-400">No groups yet.</p>
+        <p className="text-sm text-ink-3">No groups yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {groups.map((g, i) => {
             const cnt = staff.filter(m => m.group_id === g.id).length
             return (
-              <div key={g.id} className="flex items-center gap-3 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl">
+              <div key={g.id} className="flex items-center gap-3 px-4 py-3 bg-[var(--panel-2)] border border-line rounded-xl">
                 <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => move(g, -1)} disabled={i === 0 || reordering} title="Move up" aria-label={`Move ${g.name} up`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↑</button>
-                  <button onClick={() => move(g, 1)} disabled={i === groups.length - 1 || reordering} title="Move down" aria-label={`Move ${g.name} down`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>
+                  <button onClick={() => move(g, -1)} disabled={i === 0 || reordering} title="Move up" aria-label={`Move ${g.name} up`} className="btn btn-sm btn-icon disabled:opacity-30"><ArrowUp size={14} /></button>
+                  <button onClick={() => move(g, 1)} disabled={i === groups.length - 1 || reordering} title="Move down" aria-label={`Move ${g.name} down`} className="btn btn-sm btn-icon disabled:opacity-30"><ArrowDown size={14} /></button>
                 </div>
-                <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: g.color }} />
+                <span className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: g.color, boxShadow: `0 0 10px ${g.color}` }} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-gray-100">{g.name}</div>
-                  <div className="text-xs text-gray-400">{cnt} member{cnt !== 1 ? 's' : ''}</div>
+                  <div className="font-medium text-ink">{g.name}</div>
+                  <div className="text-xs text-ink-3">{cnt} member{cnt !== 1 ? 's' : ''}</div>
                 </div>
-                <button onClick={() => openEdit(g)} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Edit</button>
-                <button onClick={() => remove(g)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors">Remove</button>
+                <button onClick={() => openEdit(g)} className="btn btn-sm"><Pencil size={13} /> Edit</button>
+                <RowMenu label={`More actions for ${g.name}`} items={[{ label: 'Delete group', icon: Trash2, onSelect: () => remove(g), danger: true }]} />
               </div>
             )
           })}
@@ -119,19 +121,21 @@ export function GroupsSection({ groups, staff, onChange }: Props) {
           <Field label="Group name *">
             <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. Finance" autoFocus />
           </Field>
-          <Field label="Colour">
+          <Field label="Colour" group>
             <div className="flex flex-wrap gap-2 mt-1">
               {PALETTE.map(c => (
                 <button
                   key={c}
                   onClick={() => setForm(f => ({ ...f, color: c }))}
+                  aria-label={`Colour ${c}`}
+                  aria-pressed={form.color === c}
                   className="w-7 h-7 rounded-full border-2 transition-all"
-                  style={{ background: c, borderColor: form.color === c ? '#000' : 'transparent', outline: form.color === c ? '2px solid rgba(0,0,0,0.15)' : 'none' }}
+                  style={{ background: c, borderColor: form.color === c ? 'var(--ink)' : 'transparent', outline: form.color === c ? '2px solid var(--accent-soft)' : 'none' }}
                 />
               ))}
             </div>
           </Field>
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-[var(--danger-fg)]">{error}</p>}
         </Modal>
       )}
     </div>

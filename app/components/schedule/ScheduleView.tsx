@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useTransition } from 'react'
-import { ChevronLeft, ChevronRight, Shuffle, Download, Pin, PinOff } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Shuffle, Download, Pin, PinOff, Keyboard, CircleCheck, PencilLine } from 'lucide-react'
 import * as XLSX from 'xlsx-js-style'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -16,8 +17,8 @@ import type { EntryCache } from '@/lib/schedule'
 import type { SyncState } from './SyncBadge'
 import { SyncBadge } from './SyncBadge'
 import { KPIRow } from './KPIRow'
-import { Heatmap } from './Heatmap'
 import { ScheduleTable } from './ScheduleTable'
+import { ScheduleDayList } from './ScheduleDayList'
 
 interface Props {
   staff: Staff[]
@@ -42,8 +43,15 @@ const STATUS_XLSX: Record<Status | 'holiday', { label: string; fill: string; fon
 export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: initialWeekPlans, holidayMap, role }: Props) {
   const canEdit = role === 'admin' || role === 'editor'
 
+  const params = useSearchParams()
   const [view, setView]       = useState<'week' | 'month'>('week')
-  const [navDate, setNavDate] = useState(todayDate)
+  // ?week=YYYY-MM-DD (from the command palette) opens that week
+  const [navDate, setNavDate] = useState(() => {
+    const w = params.get('week')
+    if (w && /^\d{4}-\d{2}-\d{2}$/.test(w)) { const [y, m, d] = w.split('-').map(Number); return new Date(y, m - 1, d) }
+    return todayDate()
+  })
+  const [showKeys, setShowKeys] = useState(false)
   const [cache, setCache]     = useState<EntryCache>({})
   const [weekPlans, setWeekPlans] = useState(initialWeekPlans)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -88,6 +96,15 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
 
   useEffect(() => { loadEntries(view, navDate) }, [view, navDate, loadEntries])
 
+  // ?focus=<staffId> (from the command palette) scrolls to that person's first day
+  const focusId = params.get('focus')
+  useEffect(() => {
+    if (!focusId) return
+    const cell = document.querySelector<HTMLElement>(`[data-staff="${CSS.escape(focusId)}"]`)
+    cell?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    cell?.focus({ preventScroll: true })
+  }, [focusId])
+
   // ─── Navigation ──────────────────────────────────────────────────────────
 
   function navigate(dir: -1 | 1) {
@@ -128,21 +145,27 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
         .upsert({ week_start: weekKey, status: 'published', published_by: user?.id, published_at: new Date().toISOString() }, { onConflict: 'week_start' })
       if (error) { setSync('error', 'Failed: ' + error.message); return }
       setWeekPlans(p => ({ ...p, [weekKey]: { status: 'published', seats: initialSeats } }))
-      setSync('ok', 'Week published 🔒')
+      setSync('ok', 'Week published and locked')
     }
   }
 
   // ─── Cycle status ─────────────────────────────────────────────────────────
 
-  async function handleCycleStatus(staffId: string, dateStr: string) {
+  function handleCycleStatus(staffId: string, dateStr: string) {
+    const [y, mo, d] = dateStr.split('-').map(Number)
+    const m = staff.find(x => x.id === staffId)
+    if (!m) return
+    handleSetStatus(staffId, dateStr, nextCycleStatus(getScheduleStatus(m, new Date(y, mo - 1, d), cache)))
+  }
+
+  /** Set a day to `next`; null (or the person's default pattern) clears the override. */
+  async function handleSetStatus(staffId: string, dateStr: string, next: Status | null) {
     if (!canEdit) return
     const [y, mo, d] = dateStr.split('-').map(Number)
     const day = new Date(y, mo - 1, d)
     const m = staff.find(x => x.id === staffId)
     if (!m || isLocked(m, day, cache, holidayMap) || hasLeft(m, dateStr)) return
 
-    const cur = getScheduleStatus(m, day, cache)
-    const next = nextCycleStatus(cur)
     const patDefault = (m.pattern?.[day.getDay()] as Status | null) ?? null
     const k = entryKey(staffId, day)
 
@@ -196,7 +219,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
           staff_id: staffId, entry_date: dateStr, status, is_locked: newLocked,
           locked_by: newLocked ? user?.id : null,
         }, { onConflict: 'staff_id,entry_date' })
-      setSync('ok', newLocked ? '🔒 Locked' : '🔓 Unlocked')
+      setSync('ok', newLocked ? 'Day locked' : 'Day unlocked')
     } catch (err: unknown) {
       setSync('error', 'Lock failed: ' + (err instanceof Error ? err.message : String(err)))
       loadEntries(view, navDate)
@@ -208,7 +231,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   async function handleReshuffle() {
     if (!canEdit) return
     if (isPublished) {
-      alert('This week is published 🔒\n\nUnpublish it first if you want to reshuffle.')
+      alert('This week is published.\n\nUnpublish it first if you want to reshuffle.')
       return
     }
     if (!confirm('Reshuffle this week based on targets?\n\nLocked days will not be changed.')) return
@@ -333,103 +356,123 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col flex-1 px-6 py-5">
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 mb-5 flex-wrap">
-        <button onClick={() => navigate(-1)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <ChevronLeft size={16} />
-        </button>
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[200px]">
-          {periodLabel(view, navDate)}
-        </span>
-        <button onClick={() => navigate(1)} className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <ChevronRight size={16} />
-        </button>
-
-        {/* View toggle */}
-        <div className="flex rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden ml-1">
-          {(['week', 'month'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => switchView(v)}
-              className={cn(
-                'px-3 py-1.5 text-xs font-medium transition-colors capitalize',
-                view === v
-                  ? 'bg-[var(--green)] text-white'
-                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-              )}
+    <div className="flex flex-col flex-1 w-full max-w-[1600px] mx-auto px-4 sm:px-6 py-5 sm:pb-8">
+      {/* Header */}
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 mb-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="eyebrow">Schedule</span>
+            <span
+              className={cn('inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11.5px] font-semibold', isPublished ? 'chip-office' : 'chip-leave')}
             >
-              {v}
+              {isPublished ? <CircleCheck size={12} aria-hidden /> : <PencilLine size={12} aria-hidden />}
+              {isPublished ? 'Published' : 'Draft'}
+            </span>
+          </div>
+          <h1 className="mt-1 font-display text-[24px] sm:text-[28px] font-semibold tracking-tight text-ink">
+            {periodLabel(view, navDate)}
+          </h1>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <button onClick={() => navigate(-1)} className="btn btn-icon" aria-label={view === 'week' ? 'Previous week' : 'Previous month'}><ChevronLeft size={16} /></button>
+            <button onClick={() => setNavDate(todayDate())} className="btn">Today</button>
+            <button onClick={() => navigate(1)} className="btn btn-icon" aria-label={view === 'week' ? 'Next week' : 'Next month'}><ChevronRight size={16} /></button>
+          </div>
+          <div className="seg" role="group" aria-label="View">
+            {(['week', 'month'] as const).map(v => (
+              <button key={v} aria-pressed={view === v} onClick={() => switchView(v)} className="capitalize">{v}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <SyncBadge state={sync.state} message={sync.msg} />
+          <div className="relative hidden sm:block">
+            <button onClick={() => setShowKeys(k => !k)} className="btn btn-icon" aria-label="Keyboard shortcuts" aria-expanded={showKeys} title="Keyboard shortcuts">
+              <Keyboard size={16} />
             </button>
-          ))}
-        </div>
-
-        {/* Week status */}
-        <div className="flex items-center gap-1.5 ml-1">
-          <span className={cn('w-2 h-2 rounded-full', isPublished ? 'bg-[var(--green)]' : 'bg-gray-300')} />
-          <span className={cn('text-xs', isPublished ? 'text-[var(--green)]' : 'text-gray-400')}>
-            {isPublished ? 'Published' : 'Draft'}
-          </span>
-        </div>
-
-        {/* Right actions */}
-        <div className="flex items-center gap-2 ml-auto">
-          <button
-            onClick={exportSchedule}
-            title="Export this week's schedule"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <Download size={13} /> Export
+            {showKeys && <ShortcutHelp onClose={() => setShowKeys(false)} />}
+          </div>
+          <button onClick={exportSchedule} title="Export this week's schedule" className="btn">
+            <Download size={15} /> <span className="hidden sm:inline">Export</span>
           </button>
           {canEdit && (
             <>
-              <button
-                onClick={handleReshuffle}
-                title="Reshuffle based on targets"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Shuffle size={13} /> Reshuffle
+              <button onClick={handleReshuffle} title="Reshuffle based on targets" className="btn">
+                <Shuffle size={15} /> <span className="hidden sm:inline">Reshuffle</span>
               </button>
-              <button
-                onClick={togglePublish}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                  isPublished
-                    ? 'border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950'
-                    : 'bg-[var(--green)] text-white hover:opacity-90'
-                )}
-              >
-                {isPublished ? <><PinOff size={13} /> Unpublish</> : <><Pin size={13} /> Publish</>}
+              <button onClick={togglePublish} className={cn('btn', isPublished ? 'btn-danger' : 'btn-primary')}>
+                {isPublished ? <><PinOff size={15} /> Unpublish</> : <><Pin size={15} /> Publish</>}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Sync badge */}
-      <SyncBadge state={sync.state} message={sync.msg} />
-
-      {/* KPIs */}
       <KPIRow staff={staff} workDays={workDays} seats={initialSeats} seatsFor={seatsFor} cache={cache} holidayMap={holidayMap} />
 
-      {/* Heatmap */}
-      <Heatmap staff={staff} workDays={workDays} seatsFor={seatsFor} cache={cache} holidayMap={holidayMap} />
+      {/* Grid on larger screens, day list on phones */}
+      <div className="hidden sm:block">
+        <ScheduleTable
+          staff={orderedStaff}
+          groups={groups}
+          workDays={workDays}
+          seatsFor={seatsFor}
+          cache={cache}
+          holidayMap={holidayMap}
+          collapsed={collapsed}
+          canEdit={canEdit}
+          view={view}
+          onToggleGroup={toggleGroup}
+          onCycleStatus={handleCycleStatus}
+          onSetStatus={handleSetStatus}
+          onToggleLock={handleToggleLock}
+        />
+        {canEdit && (
+          <p className="mt-3 text-[12px] text-ink-3">
+            Click a day to cycle its status, or use the keyboard: arrows to move, <span className="kbd">O</span> <span className="kbd">R</span> <span className="kbd">L</span> <span className="kbd">X</span> to set, <span className="kbd">K</span> to lock.
+          </p>
+        )}
+      </div>
+      <div className="sm:hidden">
+        <ScheduleDayList
+          key={workDays.length ? fmt(workDays[0]) : 'none'}
+          staff={orderedStaff}
+          groups={groups}
+          workDays={workDays}
+          seatsFor={seatsFor}
+          cache={cache}
+          holidayMap={holidayMap}
+          canEdit={canEdit}
+          onCycleStatus={handleCycleStatus}
+        />
+      </div>
+    </div>
+  )
+}
 
-      {/* Schedule table */}
-      <ScheduleTable
-        staff={orderedStaff}
-        groups={groups}
-        workDays={workDays}
-        seatsFor={seatsFor}
-        cache={cache}
-        holidayMap={holidayMap}
-        collapsed={collapsed}
-        canEdit={canEdit}
-        view={view}
-        onToggleGroup={toggleGroup}
-        onCycleStatus={handleCycleStatus}
-        onToggleLock={handleToggleLock}
-      />
+function ShortcutHelp({ onClose }: { onClose: () => void }) {
+  const rows: [string[], string][] = [
+    [['←', '↑', '→', '↓'], 'Move between days'],
+    [['Enter'], 'Cycle status'],
+    [['O'], 'Office'], [['R'], 'Remote'], [['L'], 'Leave'], [['X'], 'Other site'],
+    [['Del'], 'Back to default pattern'],
+    [['K'], 'Lock / unlock day'],
+    [['⌘', 'K'], 'Command palette'],
+  ]
+  return (
+    <div className="absolute right-0 top-11 z-40 w-64 panel p-3 enter" role="dialog" aria-label="Keyboard shortcuts" onKeyDown={e => e.key === 'Escape' && onClose()}>
+      <div className="eyebrow mb-2">Keyboard</div>
+      <ul className="flex flex-col gap-1.5">
+        {rows.map(([keys, label]) => (
+          <li key={label} className="flex items-center justify-between gap-3 text-[12.5px] text-ink-2">
+            {label}
+            <span className="flex gap-1">{keys.map(k => <span key={k} className="kbd">{k}</span>)}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

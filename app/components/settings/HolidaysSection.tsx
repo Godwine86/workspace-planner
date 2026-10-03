@@ -56,14 +56,14 @@ export function HolidaysSection({ initialHolidays, canEdit }: Props) {
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Public holidays</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+      <h2 className="font-display text-[20px] font-semibold text-ink mb-1">Public holidays</h2>
+      <p className="text-sm text-ink-3 mb-4">
         Mark company-wide holidays. Those days are automatically locked for all staff in the schedule.
       </p>
 
       {canEdit && (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4 mb-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Add holiday</h3>
+        <div className="bg-[var(--panel-2)] border border-line rounded-xl p-4 mb-5">
+          <h3 className="text-sm font-semibold text-ink-2 mb-3">Add holiday</h3>
           <div className="flex flex-wrap gap-3 items-end">
             <Field label="Start date">
               <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="min-w-[150px]" />
@@ -76,29 +76,29 @@ export function HolidaysSection({ initialHolidays, canEdit }: Props) {
             </Field>
             <Btn variant="primary" onClick={add} disabled={saving}>{saving ? 'Saving…' : '+ Add holiday'}</Btn>
           </div>
-          {error && <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>}
+          {error && <p className="text-sm text-[var(--danger-fg)] mt-2">{error}</p>}
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+            <tr className="bg-[var(--panel-2)] border-b border-line">
               {['Date', 'Holiday name', ''].map(h => (
-                <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wide">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-left eyebrow">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!holidays.length ? (
-              <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-400">No holidays yet.</td></tr>
+              <tr><td colSpan={3} className="px-4 py-8 text-center text-sm text-ink-3">No holidays yet.</td></tr>
             ) : holidays.map(h => (
-              <tr key={h.id} className="border-b border-gray-100 dark:border-gray-800">
-                <td className="px-4 py-2.5 font-mono text-[12px] text-gray-600 dark:text-gray-400">{h.date}</td>
-                <td className="px-4 py-2.5 text-gray-800 dark:text-gray-200">{h.name ?? '—'}</td>
+              <tr key={h.id} className="border-b border-line">
+                <td className="px-4 py-2.5 font-mono text-[12px] text-ink-2">{h.date}</td>
+                <td className="px-4 py-2.5 text-ink">{h.name ?? '—'}</td>
                 <td className="px-4 py-2.5 text-right">
                   {canEdit && (
-                    <button onClick={() => remove(h)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors">
+                    <button onClick={() => remove(h)} className="btn btn-sm btn-danger">
                       Remove
                     </button>
                   )}

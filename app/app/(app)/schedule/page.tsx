@@ -2,7 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { ScheduleView } from '@/components/schedule/ScheduleView'
 import type { Role } from '@/types/database'
 
-export default async function SchedulePage() {
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ week?: string }> }) {
+  const { week } = await searchParams
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -38,6 +39,7 @@ export default async function SchedulePage() {
 
   return (
     <ScheduleView
+      key={week ?? 'current'}
       staff={staff ?? []}
       groups={groups ?? []}
       seats={seats}

@@ -21,19 +21,19 @@ export function Modal({ title, onClose, children, footer }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div ref={ref} className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-800">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">{title}</h2>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+      <div ref={ref} role="dialog" aria-modal="true" aria-label={title} className="w-full max-w-md panel panel-glow bg-[var(--panel-solid)] overflow-hidden enter">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-line">
+          <h2 className="font-display text-[16px] font-semibold text-ink">{title}</h2>
+          <button onClick={onClose} className="btn btn-sm btn-icon" aria-label="Close">
             <X size={15} />
           </button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">{children}</div>
         {footer && (
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2 bg-gray-50 dark:bg-gray-900/50">
+          <div className="px-6 py-4 border-t border-line flex justify-end gap-2 bg-[var(--panel-2)]">
             {footer}
           </div>
         )}
@@ -42,44 +42,29 @@ export function Modal({ title, onClose, children, footer }: Props) {
   )
 }
 
-export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
+/** Labelled field. Wraps a single control in <label>; `group` is for several controls. */
+export function Field({ label, hint, group, children }: { label: string; hint?: string; group?: boolean; children: React.ReactNode }) {
+  const body = (
+    <>
+      <span className="block text-[13px] font-medium text-ink-2">{label}</span>
       {children}
-      {hint && <p className="text-xs text-gray-400">{hint}</p>}
-    </div>
+      {hint && <span className="block text-xs text-ink-3">{hint}</span>}
+    </>
   )
+  return group
+    ? <div role="group" aria-label={label} className="block space-y-1.5">{body}</div>
+    : <label className="block space-y-1.5">{body}</label>
 }
 
-export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--green)] disabled:opacity-50"
-    />
-  )
+export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={`field disabled:opacity-50 ${className ?? ''}`} />
 }
 
-export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[var(--green)]"
-    />
-  )
+export function Select({ className, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return <select {...props} className={`field ${className ?? ''}`} />
 }
 
-export function Btn({ variant = 'secondary', ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' }) {
-  const cls = variant === 'primary'
-    ? 'bg-[var(--green)] text-white hover:opacity-90'
-    : variant === 'danger'
-    ? 'border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950'
-    : 'border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-  return (
-    <button
-      {...props}
-      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${cls} ${props.className ?? ''}`}
-    />
-  )
+export function Btn({ variant = 'secondary', className, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' }) {
+  const cls = variant === 'primary' ? 'btn-primary' : variant === 'danger' ? 'btn-danger' : ''
+  return <button {...props} className={`btn ${cls} ${className ?? ''}`} />
 }

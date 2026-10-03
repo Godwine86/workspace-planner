@@ -1,12 +1,14 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-import { STATUS_META, getScheduleStatus, isLocked, fmt, todayDate, countsAsOffice, hasLeft } from '@/lib/schedule'
-import { WORKDAYS_PER_WEEK } from '@/lib/utils'
-import type { Staff, Group } from '@/types/database'
-import type { Status } from '@/types/database'
-import type { EntryCache } from '@/lib/schedule'
+import { Fragment } from 'react'
 import type React from 'react'
+import { ChevronDown, Lock, LockOpen, Building2, House } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { getScheduleStatus, isLocked, fmt, todayDate, countsAsOffice, hasLeft } from '@/lib/schedule'
+import { WORKDAYS_PER_WEEK } from '@/lib/utils'
+import type { Staff, Group, Status } from '@/types/database'
+import type { EntryCache } from '@/lib/schedule'
+import { StatusChip, STATUS_HOTKEY } from '@/components/ui/StatusChip'
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
@@ -24,30 +26,28 @@ interface Props {
   view: 'week' | 'month'
   onToggleGroup: (gid: string) => void
   onCycleStatus: (staffId: string, dateStr: string) => void
+  onSetStatus: (staffId: string, dateStr: string, status: Status | null) => void
   onToggleLock: (staffId: string, dateStr: string) => void
 }
 
-const STATUS_CELL_CLS: Record<Status, string> = {
-  office: 'border text-[10px] font-semibold tracking-wide',
-  remote: 'border text-[10px] font-semibold tracking-wide',
-  leave:  'border text-[10px] font-semibold tracking-wide',
-  other:  'border text-[10px] font-semibold tracking-wide',
-}
+const HOTKEY_STATUS: Record<string, Status> = Object.fromEntries(
+  Object.entries(STATUS_HOTKEY).map(([s, k]) => [k.toLowerCase(), s as Status])
+)
 
-const STATUS_CELL_STYLE: Record<Status, React.CSSProperties> = {
-  office: { background: 'rgba(57,181,74,0.15)',  color: '#1a7a2a', borderColor: 'rgba(57,181,74,0.35)'  },
-  remote: { background: 'rgba(41,171,226,0.15)', color: '#0f6fa0', borderColor: 'rgba(41,171,226,0.35)' },
-  leave:  { background: 'rgba(148,163,184,0.12)', color: '#64748b', borderColor: 'rgba(148,163,184,0.3)' },
-  other:  { background: 'rgba(247,148,29,0.15)',  color: '#b05a00', borderColor: 'rgba(247,148,29,0.35)'  },
+/** Capacity state for a day: drives the header bar colour and its label. */
+export function capacityState(n: number, seats: number): 'ok' | 'full' | 'over' {
+  return n > seats ? 'over' : n === seats ? 'full' : 'ok'
 }
+const CAP_VAR = { ok: 'var(--cap-ok)', full: 'var(--cap-full)', over: 'var(--cap-over)' } as const
 
 export function ScheduleTable({
   staff, groups, workDays, seatsFor, cache, holidayMap,
   collapsed, canEdit, view,
-  onToggleGroup, onCycleStatus, onToggleLock,
+  onToggleGroup, onCycleStatus, onSetStatus, onToggleLock,
 }: Props) {
   const today = todayDate()
   const wip = view === 'week' ? 1 : workDays.length / WORKDAYS_PER_WEEK
+  const compact = view === 'month'
 
   // Build group → members map
   const gmap: Record<string, Staff[]> = {}
@@ -59,236 +59,227 @@ export function ScheduleTable({
   })
   const order = [...groups.map(g => g.id), ...(gmap['__ug'].length ? ['__ug'] : [])]
 
+  // Keyboard: arrows move between cells, O/R/L/X set a status, Delete clears to the
+  // default pattern, K toggles the lock. Enter/Space cycle (native button click).
+  function onGridKey(e: React.KeyboardEvent<HTMLTableElement>) {
+    const el = e.target as HTMLElement
+    const r = el.dataset.row, c = el.dataset.col
+    if (r == null || c == null) return
+    const row = Number(r), col = Number(c)
+    const move: Record<string, [number, number]> = {
+      ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1],
+    }
+    if (move[e.key]) {
+      e.preventDefault()
+      const [dr, dc] = move[e.key]
+      const next = e.currentTarget.querySelector<HTMLElement>(`[data-row="${row + dr}"][data-col="${col + dc}"]`)
+      next?.focus()
+      return
+    }
+    if (!canEdit || e.metaKey || e.ctrlKey || e.altKey) return
+    const staffId = el.dataset.staff!, dateStr = el.dataset.date!
+    const key = e.key.toLowerCase()
+    if (HOTKEY_STATUS[key]) { e.preventDefault(); onSetStatus(staffId, dateStr, HOTKEY_STATUS[key]) }
+    else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); onSetStatus(staffId, dateStr, null) }
+    else if (key === 'k') { e.preventDefault(); onToggleLock(staffId, dateStr) }
+  }
+
+  let rowIndex = 0
+
   return (
-    <div className="overflow-x-auto rounded-xl border border-white/40 dark:border-white/5 glass shadow-sm" style={{ boxShadow: '0 2px 16px rgba(27,43,107,0.07)' }}>
-      <table className="w-full border-collapse text-[12.5px]">
-        <thead>
-          <tr>
-            <th className="sticky left-0 z-10 bg-white/70 dark:bg-gray-900/70 backdrop-blur px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 dark:text-gray-400 border-b border-r border-gray-200/50 dark:border-gray-700/50 min-w-[160px]">
-              Name &amp; targets
-            </th>
-            {workDays.map(day => {
-              const key = fmt(day)
-              const isToday = day.getTime() === today.getTime()
-              const holName = holidayMap[key]
-              return (
-                <th
-                  key={key}
-                  className={cn(
-                    'px-2 py-2 text-center text-[11px] font-medium border-b border-r border-gray-200/50 dark:border-gray-700/50 min-w-[58px] bg-white/50 dark:bg-transparent',
-                    isToday
-                      ? 'text-[var(--primary)] dark:text-blue-300'
-                      : holName
-                        ? 'text-[var(--pink)] dark:text-pink-400'
-                        : 'text-gray-500 dark:text-gray-400'
-                  )}
-                >
-                  <div>{DAY_NAMES[day.getDay()]}</div>
-                  <div className="font-normal text-[10px]">
-                    {day.getDate()} {MONTH_NAMES[day.getMonth()]}
-                  </div>
-                  {holName && (
-                    <div className="text-[8px] font-semibold text-[var(--pink)] dark:text-pink-400 truncate max-w-[52px]">
-                      {holName.length > 5 ? holName.slice(0, 4) + '…' : holName}
-                    </div>
-                  )}
-                </th>
-              )
-            })}
-            <th className="bg-white/50 dark:bg-transparent border-b border-gray-200/50 dark:border-gray-700/50 w-12" />
-          </tr>
-        </thead>
-        <tbody>
-          {order.map((gid, gIdx) => {
-            const members = gmap[gid] ?? []
-            if (!members.length) return null
-            const grp = groups.find(g => g.id === gid)
-            const gname = grp?.name ?? 'Unassigned'
-            const gcol  = grp?.color ?? '#999'
-            const open  = !collapsed[gid]
-
-            return (
-              <>
-                {gIdx > 0 && (
-                  <tr key={`spacer-${gid}`}>
-                    <td colSpan={workDays.length + 2} className="h-2 bg-gray-100/40 dark:bg-white/[0.02]" />
-                  </tr>
-                )}
-
-                {/* Group header row */}
-                <tr key={`grp-${gid}`}>
-                  <td
-                    colSpan={workDays.length + 2}
-                    className="px-4 py-2 bg-white/40 dark:bg-white/5 border-b border-gray-200/50 dark:border-gray-700/50 cursor-pointer select-none"
-                    onClick={() => onToggleGroup(gid)}
+    <div className="panel overflow-hidden enter">
+      <div className="overflow-x-auto">
+        <table className="w-full border-separate border-spacing-0 text-[13px]" onKeyDown={onGridKey}>
+          <thead>
+            <tr>
+              <th className="sticky left-0 top-0 z-20 bg-[var(--panel-solid)] px-4 py-3 text-left border-b border-line min-w-[200px]">
+                <span className="eyebrow">Team</span>
+              </th>
+              {workDays.map(day => {
+                const key = fmt(day)
+                const isToday = day.getTime() === today.getTime()
+                const holName = holidayMap[key]
+                const seats = seatsFor(day)
+                const n = holName ? 0 : staff.filter(m => getScheduleStatus(m, day, cache) === 'office').length
+                const state = capacityState(n, seats)
+                const pct = seats > 0 ? Math.min(100, (n / seats) * 100) : 0
+                return (
+                  <th
+                    key={key}
+                    className={cn(
+                      'px-2 pt-2.5 pb-2 text-center border-b border-line align-top bg-[var(--panel-solid)]',
+                      compact ? 'min-w-[48px]' : 'min-w-[104px]',
+                      isToday && 'bg-[color-mix(in_oklab,var(--panel-solid),var(--ring)_8%)]',
+                    )}
+                    aria-label={holName ? `${DAY_NAMES[day.getDay()]} ${day.getDate()}: holiday, ${holName}` : `${DAY_NAMES[day.getDay()]} ${day.getDate()}: ${n} of ${seats} seats`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: gcol }} />
-                      <span className="font-medium text-gray-800 dark:text-gray-200 text-[13px]">{gname}</span>
-                      <span className="px-1.5 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-[10px]">
-                        {members.length} member{members.length !== 1 ? 's' : ''}
-                      </span>
-                      <span className="ml-auto text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+                    <div className={cn('text-[11px] font-semibold uppercase tracking-wider', isToday ? 'text-accent' : 'text-ink-3')}>
+                      {DAY_NAMES[day.getDay()]}
                     </div>
-                  </td>
-                </tr>
+                    <div className={cn('font-display font-semibold leading-tight', compact ? 'text-[14px]' : 'text-[17px]', isToday ? 'text-accent' : 'text-ink')}>
+                      {day.getDate()}
+                      {!compact && <span className="ml-1 text-[11px] font-medium text-ink-3">{MONTH_NAMES[day.getMonth()]}</span>}
+                    </div>
+                    {holName ? (
+                      <div className="mt-1.5 mx-auto w-fit max-w-full truncate rounded-md px-1.5 py-0.5 text-[10.5px] font-semibold chip-holiday" title={holName}>
+                        {compact ? 'Hol' : holName}
+                      </div>
+                    ) : (
+                      <div className="mt-1.5" title={`${n} of ${seats} seats${state === 'over' ? ' (over capacity)' : state === 'full' ? ' (full)' : ''}`}>
+                        <div className="flex items-baseline justify-center font-mono tabular-nums text-[11.5px]" style={{ color: state === 'ok' ? 'var(--ink-2)' : CAP_VAR[state] }}>
+                          <span className="font-semibold">{n}</span><span className="text-ink-3">/{seats}</span>
+                          {state === 'over' && !compact && <span className="ml-1 text-[10px] font-semibold uppercase">Over</span>}
+                        </div>
+                        <div className="mt-1 h-1 rounded-full bg-[var(--panel-2)] overflow-hidden" aria-hidden>
+                          <div
+                            className="h-full rounded-full transition-[width] duration-300 ease-out"
+                            style={{ width: `${pct}%`, background: CAP_VAR[state], boxShadow: state !== 'ok' ? `0 0 8px ${CAP_VAR[state]}` : undefined }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </th>
+                )
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {order.map(gid => {
+              const members = gmap[gid] ?? []
+              if (!members.length) return null
+              const grp = groups.find(g => g.id === gid)
+              const gname = grp?.name ?? 'Unassigned'
+              const gcol  = grp?.color ?? '#8C95B5'
+              const open  = !collapsed[gid]
 
-                {open && (
-                  <>
-                    {members.map(m => {
-                      const actualOffice = workDays.filter(d => countsAsOffice(getScheduleStatus(m, d, cache))).length
-                      const actualRemote = workDays.filter(d => getScheduleStatus(m, d, cache) === 'remote').length
-                      const tgtOffice = m.tgt_office != null ? Math.round(m.tgt_office * wip) : null
-                      const tgtRemote = m.tgt_remote != null ? Math.round(m.tgt_remote * wip) : null
+              return (
+                <Fragment key={gid}>
+                  <tr>
+                    <td colSpan={workDays.length + 1} className="p-0 border-b border-line bg-[var(--panel-2)]">
+                      <button
+                        onClick={() => onToggleGroup(gid)}
+                        aria-expanded={open}
+                        className="sticky left-0 flex items-center gap-2.5 px-4 h-10 text-left"
+                      >
+                        <ChevronDown size={15} className={cn('text-ink-3 transition-transform duration-200', !open && '-rotate-90')} aria-hidden />
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: gcol, boxShadow: `0 0 10px ${gcol}` }} />
+                        <span className="font-display font-semibold text-[13.5px] text-ink">{gname}</span>
+                        <span className="text-[12px] text-ink-3">{members.length} {members.length === 1 ? 'person' : 'people'}</span>
+                      </button>
+                    </td>
+                  </tr>
 
-                      return (
-                        <tr key={m.id} className="border-b border-gray-100/60 dark:border-gray-800/50 hover:bg-white/40 dark:hover:bg-white/5 transition-colors duration-100">
-                          {/* Name cell */}
-                          <td className="sticky left-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur border-r border-gray-200/50 dark:border-gray-700/50 px-4 py-2 min-w-[160px]">
-                            <div className="font-medium text-gray-900 dark:text-gray-100 text-[13px] leading-tight">{m.name}</div>
-                            {m.role && <div className="text-[11px] text-gray-400 leading-tight">{m.role}</div>}
-                            {m.end_date && (
-                              <div className="text-[10px] text-gray-400 leading-tight">Last day {m.end_date}</div>
-                            )}
-                            <div className="flex gap-1.5 mt-1 flex-wrap">
-                              <TargetPill
-                                label="🏢"
-                                actual={actualOffice}
-                                target={tgtOffice}
-                              />
-                              <TargetPill
-                                label="🏠"
-                                actual={actualRemote}
-                                target={tgtRemote}
-                              />
-                            </div>
-                          </td>
+                  {open && members.map(m => {
+                    const row = rowIndex++
+                    const actualOffice = workDays.filter(d => countsAsOffice(getScheduleStatus(m, d, cache))).length
+                    const actualRemote = workDays.filter(d => getScheduleStatus(m, d, cache) === 'remote').length
+                    const tgtOffice = m.tgt_office != null ? Math.round(m.tgt_office * wip) : null
+                    const tgtRemote = m.tgt_remote != null ? Math.round(m.tgt_remote * wip) : null
 
-                          {/* Day cells */}
-                          {workDays.map(day => {
-                            const dateStr = fmt(day)
-                            const holName = holidayMap[dateStr]
-                            const isToday = day.getTime() === today.getTime()
-                            const locked  = isLocked(m, day, cache, holidayMap)
-                            const st      = getScheduleStatus(m, day, cache)
+                    return (
+                      <tr key={m.id} className="group/row transition-colors duration-150 hover:bg-[var(--panel-2)]">
+                        <td className="sticky left-0 z-10 bg-[var(--panel-solid)] group-hover/row:bg-[color-mix(in_oklab,var(--panel-solid),var(--ink)_3%)] border-b border-line px-4 py-2 min-w-[200px]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-ink text-[13.5px] leading-tight truncate">{m.name}</span>
+                            {m.end_date && <span className="text-[10.5px] text-ink-3 shrink-0">· last day {m.end_date}</span>}
+                          </div>
+                          <div className="mt-1 flex items-center gap-3 text-[11.5px] text-ink-3">
+                            {m.role && <span className="truncate max-w-[110px]">{m.role}</span>}
+                            <TargetMeter icon="office" actual={actualOffice} target={tgtOffice} />
+                            <TargetMeter icon="remote" actual={actualRemote} target={tgtRemote} />
+                          </div>
+                        </td>
 
-                            if (hasLeft(m, dateStr)) {
-                              return (
-                                <td key={dateStr} className="px-1 py-1.5 text-center border-r border-gray-100 dark:border-gray-800 bg-gray-50/60 dark:bg-white/[0.02]" title={`Left after ${m.end_date}`}>
-                                  <span className="text-[9px] font-semibold text-gray-400">Left</span>
-                                </td>
-                              )
-                            }
+                        {workDays.map((day, col) => {
+                          const dateStr = fmt(day)
+                          const holName = holidayMap[dateStr]
+                          const isToday = day.getTime() === today.getTime()
+                          const todayCls = isToday && 'bg-[color-mix(in_oklab,transparent,var(--ring)_6%)]'
 
-                            if (holName) {
-                              return (
-                                <td key={dateStr} className="px-1 py-1.5 text-center border-r border-gray-100 dark:border-gray-800" style={{ background: 'rgba(236,0,140,0.06)' }}>
-                                  <span className="text-[9px] font-semibold text-[var(--pink)] dark:text-pink-400">
-                                    {holName.length > 5 ? holName.slice(0, 4) + '…' : holName}
-                                  </span>
-                                </td>
-                              )
-                            }
-
+                          if (hasLeft(m, dateStr)) {
                             return (
-                              <td
-                                key={dateStr}
-                                className={cn(
-                                  'px-1 py-1.5 text-center border-r border-gray-100 dark:border-gray-800',
-                                  isToday && 'bg-blue-50/30 dark:bg-blue-950/10',
-                                )}
-                              >
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <button
-                                    disabled={!canEdit || locked}
-                                    onClick={() => onCycleStatus(m.id, dateStr)}
-                                    className={cn(
-                                      'w-11 h-7 rounded border text-[10px] font-semibold tracking-wide transition-all duration-100',
-                                      !st && 'border-gray-200 dark:border-gray-700 text-gray-300 dark:text-gray-600',
-                                      locked && 'opacity-60 cursor-not-allowed border-dashed',
-                                      !locked && canEdit && st && 'hover:opacity-80 cursor-pointer hover:scale-105',
-                                      !canEdit && 'cursor-default',
-                                    )}
-                                    style={st ? STATUS_CELL_STYLE[st] : undefined}
-                                    title={locked ? 'Locked' : (st ? STATUS_META[st].label : 'Not set')}
-                                  >
-                                    {st ? STATUS_META[st].short : '·'}
-                                  </button>
-
-                                  {canEdit && (
-                                    <button
-                                      onClick={() => onToggleLock(m.id, dateStr)}
-                                      className="text-[10px] opacity-30 hover:opacity-80 transition-opacity leading-none"
-                                      title={locked ? 'Unlock' : 'Lock'}
-                                    >
-                                      {locked ? '🔒' : '🔓'}
-                                    </button>
-                                  )}
-                                </div>
+                              <td key={dateStr} className={cn('border-b border-line text-center text-[11px] text-ink-3', todayCls)} title={`Left after ${m.end_date}`}>
+                                Left
                               </td>
                             )
-                          })}
+                          }
+                          if (holName) {
+                            return (
+                              <td key={dateStr} className={cn('border-b border-line text-center px-1', todayCls)}>
+                                <StatusChip status="holiday" variant={compact ? 'icon' : 'full'} title={holName} className="opacity-80" />
+                              </td>
+                            )
+                          }
 
-                          {/* Actions */}
-                          <td className="px-1 py-1.5 text-center w-12" />
-                        </tr>
-                      )
-                    })}
-
-                    {/* Count row */}
-                    <tr className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/60">
-                      <td className="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 px-4 py-1.5 text-[10.5px] text-gray-400">
-                        In office / seats
-                      </td>
-                      {workDays.map(day => {
-                        const dateStr = fmt(day)
-                        if (holidayMap[dateStr]) {
+                          const locked = isLocked(m, day, cache, holidayMap)
+                          const st = getScheduleStatus(m, day, cache)
                           return (
-                            <td key={dateStr} className="text-center border-r border-gray-100 dark:border-gray-800 text-[9px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 py-1">
-                              Holiday
+                            <td key={dateStr} className={cn('border-b border-line text-center px-1 py-1.5', todayCls)}>
+                              <div className="group/cell relative inline-flex">
+                                <button
+                                  data-row={row}
+                                  data-col={col}
+                                  data-staff={m.id}
+                                  data-date={dateStr}
+                                  aria-disabled={!canEdit || locked}
+                                  onClick={() => { if (canEdit && !locked) onCycleStatus(m.id, dateStr) }}
+                                  aria-label={`${m.name}, ${DAY_NAMES[day.getDay()]} ${day.getDate()}: ${st ?? 'not set'}${locked ? ', locked' : ''}`}
+                                  className={cn(
+                                    'rounded-[10px] transition-transform duration-150 ease-out',
+                                    canEdit && !locked ? 'cursor-pointer hover:scale-[1.04] active:scale-95' : 'cursor-default',
+                                  )}
+                                >
+                                  <StatusChip
+                                    key={st ?? 'none'}
+                                    status={st}
+                                    variant={compact ? 'icon' : 'full'}
+                                    className={cn('pop', compact ? '' : 'min-w-[84px] h-8', locked && 'border-dashed')}
+                                  />
+                                </button>
+                                {/* Lock badge: always shown when locked; on hover (or always on touch) when editable */}
+                                {(locked || canEdit) && (
+                                  <button
+                                    tabIndex={-1}
+                                    disabled={!canEdit}
+                                    onClick={() => onToggleLock(m.id, dateStr)}
+                                    title={locked ? (canEdit ? 'Unlock this day (K)' : 'Locked') : 'Lock this day (K)'}
+                                    aria-label={locked ? 'Unlock this day' : 'Lock this day'}
+                                    className={cn(
+                                      'absolute -top-1.5 -right-1.5 grid place-items-center w-[18px] h-[18px] rounded-full bg-[var(--panel-solid)] border transition-opacity duration-150',
+                                      locked
+                                        ? 'border-line-strong text-ink-2'
+                                        : 'border-line text-ink-3 opacity-0 group-hover/cell:opacity-100 [@media(hover:none)]:opacity-60',
+                                    )}
+                                  >
+                                    {locked ? <Lock size={10} strokeWidth={2.5} /> : <LockOpen size={10} strokeWidth={2.5} />}
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           )
-                        }
-                        const n = members.filter(m => getScheduleStatus(m, day, cache) === 'office').length
-                        const seats = seatsFor(day)
-                        return (
-                          <td
-                            key={dateStr}
-                            className={cn(
-                              'text-center border-r border-gray-100 dark:border-gray-800 text-[10px] font-medium py-1',
-                              n > seats  ? 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950' :
-                              n === seats ? 'text-amber-600 dark:text-amber-400' :
-                                           'text-gray-500 dark:text-gray-400'
-                            )}
-                          >
-                            {n}{n > seats ? '⚠' : ''}/{seats}
-                          </td>
-                        )
-                      })}
-                      <td className="w-12 border-r border-gray-100 dark:border-gray-800" />
-                    </tr>
-                  </>
-                )}
-              </>
-            )
-          })}
-        </tbody>
-      </table>
+                        })}
+                      </tr>
+                    )
+                  })}
+                </Fragment>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
-function TargetPill({ label, actual, target }: { label: string; actual: number; target: number | null }) {
-  const over  = target != null && actual > target
-  const under = target != null && actual < target
+function TargetMeter({ icon, actual, target }: { icon: 'office' | 'remote'; actual: number; target: number | null }) {
+  const Icon = icon === 'office' ? Building2 : House
+  const off = target != null && actual !== target
+  const color = target == null || !off ? undefined : actual > target ? 'var(--cap-over)' : 'var(--cap-full)'
+  const label = `${icon === 'office' ? 'Office' : 'Remote'} ${actual}${target != null ? ` of ${target}` : ''} days`
   return (
-    <span className={cn(
-      'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium border',
-      over  ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950 dark:border-red-800 dark:text-red-400' :
-      under ? 'bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400' :
-              'bg-gray-100 border-gray-200 text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400'
-    )}>
-      {label} {actual}{target != null ? `/${target}d` : 'd'}
+    <span className="inline-flex items-center gap-1 font-mono tabular-nums" style={{ color }} title={label} aria-label={label}>
+      <Icon size={12} aria-hidden />
+      <span>{actual}{target != null && <span className="text-ink-3">/{target}</span>}</span>
     </span>
   )
 }

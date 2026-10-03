@@ -1,12 +1,15 @@
 import { cn } from '@/lib/utils'
-import type { Staff } from '@/types/database'
+import type { Staff, Status } from '@/types/database'
 import type { EntryCache } from '@/lib/schedule'
-import { getScheduleStatus, todayDate, fmt, entryKey } from '@/lib/schedule'
+import { getScheduleStatus, todayDate, fmt } from '@/lib/schedule'
+import { STATUS_ICON } from '@/components/ui/StatusChip'
+import { Gauge } from '@/components/ui/Gauge'
+import { capacityState } from './ScheduleTable'
 
 interface Props {
   staff: Staff[]
   workDays: Date[]
-  /** Current seats setting, shown as "Available seats" */
+  /** Current seats setting */
   seats: number
   /** Seat count for a given day (published weeks keep their own snapshot) */
   seatsFor: (day: Date) => number
@@ -14,106 +17,111 @@ interface Props {
   holidayMap: Record<string, string>
 }
 
-interface KPICardProps {
-  label: string
-  accent: string
-  children: React.ReactNode
-}
-
-function KPICard({ label, accent, children }: KPICardProps) {
-  return (
-    <div
-      className="relative flex flex-col gap-1 pl-5 pr-5 py-3.5 glass rounded-xl min-w-[120px] overflow-hidden transition-transform duration-150 hover:-translate-y-0.5 hover:shadow-md"
-      style={{ boxShadow: '0 2px 12px rgba(27,43,107,0.06)' }}
-    >
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ background: accent }} />
-      <div className="text-[11px] text-gray-500 dark:text-gray-400 uppercase tracking-wide font-medium">{label}</div>
-      {children}
-    </div>
-  )
-}
+const CAP_VAR = { ok: 'var(--cap-ok)', full: 'var(--cap-full)', over: 'var(--cap-over)' } as const
+const DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const SPLIT: { key: Status; label: string; color: string }[] = [
+  { key: 'office', label: 'Office',     color: 'var(--office)' },
+  { key: 'other',  label: 'Other site', color: 'var(--other)'  },
+  { key: 'remote', label: 'Remote',     color: 'var(--remote)' },
+  { key: 'leave',  label: 'Leave',      color: 'var(--leave)'  },
+]
 
 export function KPIRow({ staff, workDays, seats, seatsFor, cache, holidayMap }: Props) {
   const today = todayDate()
-  const todaySeats = seatsFor(today)
+  const days = workDays.filter(d => !holidayMap[fmt(d)])
 
-  const todayIsHoliday = !!holidayMap[fmt(today)]
-  const todayOffice = todayIsHoliday ? 0 : staff.filter(m => cache[entryKey(m.id, today)]?.status === 'office').length
-  const todayPct = todaySeats > 0 ? Math.min(100, Math.round(todayOffice / todaySeats * 100)) : 0
-
-  const todayBarColor =
-    todayOffice > todaySeats   ? '#ef4444' :
-    todayOffice >= todaySeats * 0.8 ? '#F7941D' :
-    'var(--green)'
-
-  const todayTextColor =
-    todayOffice > todaySeats   ? 'text-red-600 dark:text-red-400' :
-    todayOffice >= todaySeats * 0.8 ? 'text-[var(--amber)]' :
-    'text-[var(--green)]'
-
-  let totalOffice = 0, totalRemote = 0, totalLeave = 0, totalOther = 0
-  let totalSeats = 0
-  workDays.forEach(d => {
-    if (holidayMap[fmt(d)]) return
-    totalSeats += seatsFor(d)
-    staff.forEach(m => {
-      const st = getScheduleStatus(m, d, cache)
-      if (st === 'office') totalOffice++
-      else if (st === 'remote') totalRemote++
-      else if (st === 'leave') totalLeave++
-      else if (st === 'other') totalOther++
-    })
+  const perDay = days.map(d => {
+    const counts: Record<Status, number> = { office: 0, remote: 0, leave: 0, other: 0 }
+    staff.forEach(m => { const st = getScheduleStatus(m, d, cache); if (st) counts[st]++ })
+    return { day: d, counts, seats: seatsFor(d) }
   })
 
-  const utilPct = totalSeats > 0 ? Math.round(totalOffice / totalSeats * 100) : 0
+  // Hero: today if it's in view, otherwise the busiest day of the period
+  const todayRow = perDay.find(p => p.day.getTime() === today.getTime())
+  const busiest = perDay.reduce<typeof perDay[number] | undefined>((a, b) => (!a || b.counts.office > a.counts.office ? b : a), undefined)
+  const hero = todayRow ?? busiest
+  const heroLabel = todayRow ? 'Today' : busiest ? `Busiest · ${DAY[busiest.day.getDay()]} ${busiest.day.getDate()}` : 'Today'
+  const heroOffice = hero?.counts.office ?? 0
+  const heroSeats = hero?.seats ?? seats
+  const heroState = capacityState(heroOffice, heroSeats)
 
-  const utilColor =
-    utilPct > 100 ? '#ef4444' :
-    utilPct >= 80  ? '#F7941D' :
-    'var(--primary)'
+  const totals: Record<Status, number> = { office: 0, remote: 0, leave: 0, other: 0 }
+  let totalSeats = 0
+  perDay.forEach(p => { (Object.keys(totals) as Status[]).forEach(k => { totals[k] += p.counts[k] }); totalSeats += p.seats })
+  const utilPct = totalSeats > 0 ? Math.round(totals.office / totalSeats * 100) : 0
+  const totalAll = totals.office + totals.remote + totals.leave + totals.other
 
   return (
-    <div className="flex flex-wrap gap-3 mb-5">
-      <KPICard label="Available seats" accent="var(--primary)">
-        <span className="text-2xl font-semibold text-[var(--primary)] dark:text-blue-300">{seats}</span>
-      </KPICard>
-
-      <KPICard label="Today in office" accent="var(--green)">
-        <span className={cn('text-2xl font-semibold', todayTextColor)}>
-          {todayOffice} / {todaySeats}
-        </span>
-        <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden mt-1">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${todayPct}%`, background: todayBarColor }}
-          />
+    <div className="grid gap-3 md:grid-cols-3 mb-5">
+      {/* Hero gauge */}
+      <section className="panel panel-glow p-5 flex items-center gap-5 enter" aria-label={`${heroLabel}: ${heroOffice} of ${heroSeats} seats in use`}>
+        <Gauge value={heroOffice} max={heroSeats} color={CAP_VAR[heroState]} />
+        <div className="min-w-0">
+          <div className="eyebrow">{heroLabel}</div>
+          <div className="mt-1 font-display text-[30px] font-semibold leading-none tabular-nums text-ink">
+            {heroOffice}<span className="text-ink-3 text-[20px]"> / {heroSeats}</span>
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-ink-2">
+            seats in use
+            {heroState !== 'ok' && (
+              <span className="ml-1.5 font-semibold" style={{ color: CAP_VAR[heroState] }}>
+                · {heroState === 'over' ? `${heroOffice - heroSeats} over` : 'full'}
+              </span>
+            )}
+          </div>
+          {hero && (
+            <div className="mt-2 text-[12px] text-ink-3">
+              {hero.counts.remote} remote · {hero.counts.other} other site · {hero.counts.leave} leave
+            </div>
+          )}
         </div>
-      </KPICard>
+      </section>
 
-      <KPICard label="In office (period)" accent="var(--green)">
-        <span className="text-2xl font-semibold text-[var(--green)]">{totalOffice}</span>
-      </KPICard>
+      {/* Utilization + per-day sparkline */}
+      <section className="panel p-5 enter" style={{ animationDelay: '40ms' }} aria-label={`Seat utilization ${utilPct}% for this period`}>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="eyebrow">Seat utilization</div>
+            <div className="mt-1 font-display text-[30px] font-semibold leading-none tabular-nums text-ink">{utilPct}%</div>
+            <div className="mt-1.5 text-[12.5px] text-ink-2">{totals.office} office days of {totalSeats} seats</div>
+          </div>
+          <div className="text-right text-[12px] text-ink-3">{seats} seats</div>
+        </div>
+        <div className="mt-4 flex items-end gap-1 h-10" aria-hidden>
+          {perDay.map(p => {
+            const st = capacityState(p.counts.office, p.seats)
+            const h = p.seats > 0 ? Math.max(6, Math.min(100, p.counts.office / p.seats * 100)) : 6
+            return (
+              <div key={fmt(p.day)} className="flex-1 min-w-[3px] rounded-t-[3px] transition-[height] duration-300"
+                style={{ height: `${h}%`, background: CAP_VAR[st], opacity: st === 'ok' ? 0.75 : 1 }}
+                title={`${DAY[p.day.getDay()]} ${p.day.getDate()}: ${p.counts.office}/${p.seats}`}
+              />
+            )
+          })}
+        </div>
+      </section>
 
-      <KPICard label="Remote (period)" accent="var(--blue)">
-        <span className="text-2xl font-semibold text-[var(--blue)]">{totalRemote}</span>
-      </KPICard>
-
-      <KPICard label="Leave" accent="#94a3b8">
-        <span className="text-2xl font-semibold text-gray-400">{totalLeave}</span>
-      </KPICard>
-
-      <KPICard label="Other location" accent="var(--amber)">
-        <span className="text-2xl font-semibold text-[var(--amber)]">{totalOther}</span>
-      </KPICard>
-
-      <KPICard label="Seat utilization" accent={utilColor}>
-        <span
-          className="text-2xl font-semibold"
-          style={{ color: utilColor }}
-        >
-          {utilPct}%
-        </span>
-      </KPICard>
+      {/* Split */}
+      <section className="panel p-5 enter" style={{ animationDelay: '80ms' }} aria-label="Where people work this period">
+        <div className="eyebrow">This period</div>
+        <div className="mt-3 flex h-2.5 rounded-full overflow-hidden gap-[2px] bg-[var(--panel-2)]" aria-hidden>
+          {SPLIT.map(s => totals[s.key] > 0 && (
+            <div key={s.key} style={{ width: `${totals[s.key] / Math.max(1, totalAll) * 100}%`, background: s.color }} />
+          ))}
+        </div>
+        <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2.5">
+          {SPLIT.map(s => {
+            const Icon = STATUS_ICON[s.key]
+            return (
+              <li key={s.key} className="flex items-center gap-2 text-[12.5px] text-ink-2">
+                <span className={cn('grid place-items-center w-6 h-6 rounded-md', `chip-${s.key}`)}><Icon size={13} aria-hidden /></span>
+                <span className="flex-1">{s.label}</span>
+                <span className="font-mono tabular-nums font-semibold text-ink">{totals[s.key]}</span>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
     </div>
   )
 }

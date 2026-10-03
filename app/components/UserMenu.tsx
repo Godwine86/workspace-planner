@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Role } from '@/types/database'
 
@@ -32,8 +33,10 @@ export function UserMenu({ name, email, role }: Props) {
     function onClickOutside(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    function onEsc(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
+    document.addEventListener('keydown', onEsc)
+    return () => { document.removeEventListener('mousedown', onClickOutside); document.removeEventListener('keydown', onEsc) }
   }, [])
 
   async function signOut() {
@@ -46,27 +49,30 @@ export function UserMenu({ name, email, role }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-8 h-8 rounded-full bg-[var(--green)] text-white text-xs font-semibold flex items-center justify-center hover:opacity-90 transition-opacity"
+        className="w-9 h-9 rounded-full text-white text-xs font-semibold flex items-center justify-center ring-2 ring-[var(--panel-solid)] hover:brightness-110 transition"
+        style={{ background: 'var(--brand-grad)', boxShadow: '0 0 0 3px var(--accent-soft)' }}
         title={email}
+        aria-label={`Account menu for ${name || email}`}
+        aria-expanded={open}
       >
         {initials}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-52 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{name || email}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{email}</p>
-            <span className="mt-1 inline-block text-[11px] px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 font-medium">
+        <div className="absolute right-0 top-11 w-60 panel bg-[var(--panel-solid)] z-50 overflow-hidden enter">
+          <div className="px-4 py-3 border-b border-line">
+            <p className="text-sm font-medium text-ink truncate">{name || email}</p>
+            <p className="text-xs text-ink-3 truncate">{email}</p>
+            <span className="mt-1.5 inline-flex h-6 items-center px-2 rounded-full text-[11px] font-semibold chip-office">
               {ROLE_LABEL[role]}
             </span>
           </div>
-          <div className="py-1">
+          <div className="p-1.5">
             <button
               onClick={signOut}
-              className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              className="w-full flex items-center gap-2 px-3 h-9 rounded-lg text-left text-sm text-[var(--danger-fg)] hover:bg-[var(--danger-bg)] transition-colors"
             >
-              Sign out
+              <LogOut size={15} aria-hidden /> Sign out
             </button>
           </div>
         </div>
