@@ -67,6 +67,8 @@ export interface Staff {
   pattern: Record<string, Status | null> | null
   created_at: string
   start_date: string // YYYY-MM-DD
+  /** Last working day (YYYY-MM-DD); null while still employed */
+  end_date: string | null
   /** Display position; staff are listed by group order, then this */
   sort_order: number
 }

@@ -24,6 +24,7 @@ interface StaffForm {
   tgt_remote: string
   pattern: Record<number, string>
   start_date: string
+  end_date: string
 }
 
 function defaultForm(groups: Group[]): StaffForm {
@@ -33,6 +34,7 @@ function defaultForm(groups: Group[]): StaffForm {
     tgt_office: '3', tgt_remote: '2',
     pattern: { 0: 'office', 1: 'office', 2: 'office', 3: 'office', 4: 'office' },
     start_date: fmt(new Date()),
+    end_date: '',
   }
 }
 
@@ -59,6 +61,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
       tgt_remote: String(m.tgt_remote ?? 2),
       pattern: Object.fromEntries(WORK_DOW.map(d => [d, (m.pattern?.[d] as string) ?? ''])),
       start_date: m.start_date ?? fmt(new Date()),
+      end_date: m.end_date ?? '',
     })
     setError('')
     setModal(m)
@@ -66,6 +69,9 @@ export function StaffSection({ staff, groups, onChange }: Props) {
 
   async function save() {
     if (!form.name.trim()) { setError('Please enter a name.'); return }
+    if (form.end_date && form.start_date && form.end_date < form.start_date) {
+      setError('Last working day cannot be before the start date.'); return
+    }
     setSaving(true); setError('')
     const payload = {
       name: form.name.trim(),
@@ -75,6 +81,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
       tgt_remote: parseInt(form.tgt_remote) || 0,
       pattern: Object.fromEntries(WORK_DOW.map(d => [d, form.pattern[d] || null])),
       start_date: form.start_date || fmt(new Date()),
+      end_date: form.end_date || null,
     }
 
     if (modal === 'add') {
@@ -92,8 +99,20 @@ export function StaffSection({ staff, groups, onChange }: Props) {
     setSaving(false); setModal(null)
   }
 
+  // Departures keep their history: set a last working day instead of deleting
+  function markLeft(m: Staff) {
+    openEdit(m)
+    setForm(f => ({ ...f, end_date: fmt(new Date()) }))
+  }
+
   async function remove(m: Staff) {
-    if (!confirm(`Remove "${m.name}" from the team?`)) return
+    if (!confirm(
+      `Permanently delete "${m.name}"?\n\n` +
+      'This also deletes all of their past schedule entries, so History and Analytics ' +
+      'for previous weeks will change.\n\n' +
+      'If they have left the team, cancel and use "Mark as left" instead. ' +
+      'Only delete someone who was added by mistake.'
+    )) return
     const { error: err } = await supabase.from('staff').delete().eq('id', m.id)
     if (err) { alert(err.message); return }
     onChange(staff.filter(s => s.id !== m.id))
@@ -155,7 +174,14 @@ export function StaffSection({ staff, groups, onChange }: Props) {
                     <button onClick={() => move(m, -1)} disabled={!canUp || reordering} title="Move up within group" aria-label={`Move ${m.name} up`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed mr-1 transition-colors">↑</button>
                     <button onClick={() => move(m, 1)} disabled={!canDown || reordering} title="Move down within group" aria-label={`Move ${m.name} down`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>
                   </td>
-                  <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{m.name}</td>
+                  <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">
+                    {m.name}
+                    {m.end_date && (
+                      <span className="ml-2 text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400" title="Last working day">
+                        Left · {m.end_date}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-gray-400 text-[12px]">{m.role ?? '—'}</td>
                   <td className="px-4 py-2.5">
                     <span className="flex items-center gap-1.5 text-[12px]">
@@ -167,7 +193,10 @@ export function StaffSection({ staff, groups, onChange }: Props) {
                   <td className="px-4 py-2.5 text-center font-mono text-[12px]">{m.tgt_remote ?? '—'}</td>
                   <td className="px-4 py-2.5 whitespace-nowrap">
                     <button onClick={() => openEdit(m)} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mr-1.5 transition-colors">Edit</button>
-                    <button onClick={() => remove(m)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors">Remove</button>
+                    {!m.end_date && (
+                      <button onClick={() => markLeft(m)} className="text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 mr-1.5 transition-colors">Mark as left</button>
+                    )}
+                    <button onClick={() => remove(m)} className="text-xs px-2 py-1 rounded border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 transition-colors" title="Permanently delete (erases their history)">Delete</button>
                   </td>
                 </tr>
               )
@@ -198,6 +227,9 @@ export function StaffSection({ staff, groups, onChange }: Props) {
           </Field>
           <Field label="Start date">
             <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+          </Field>
+          <Field label="Last working day (leave empty while employed)">
+            <Input type="date" value={form.end_date} min={form.start_date || undefined} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="🏢 Office days/wk">

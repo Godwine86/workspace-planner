@@ -43,12 +43,23 @@ export function buildEntryCache(rows: Pick<ScheduleEntry, 'staff_id' | 'entry_da
 
 // ─── Status resolution ────────────────────────────────────────────────────────
 
-/** Schedule view: DB entry → pattern fallback (gated by start_date) → null */
+/** True for any date after a staff member's last working day (end_date). */
+export function hasLeft(staff: Pick<Staff, 'end_date'>, dateStr: string): boolean {
+  return !!staff.end_date && dateStr > staff.end_date
+}
+
+/** Drops staff who had already left before `fromStr`, so they don't show up in later periods. */
+export function employedSince<T extends Pick<Staff, 'end_date'>>(staff: T[], fromStr: string): T[] {
+  return staff.filter(m => !m.end_date || m.end_date >= fromStr)
+}
+
+/** Schedule view: nothing after end_date → DB entry → pattern fallback (gated by start_date) → null */
 export function getScheduleStatus(
   staff: Staff,
   date: Date,
   cache: EntryCache,
 ): Status | null {
+  if (hasLeft(staff, fmt(date))) return null
   const entry = cache[entryKey(staff.id, date)]
   if (entry) return entry.status
   if (staff.start_date && fmt(date) < staff.start_date) return null
@@ -190,6 +201,7 @@ export function computeReshuffle(
     const candidates = staff.filter(m => {
       if (isLocked(m, day, cache, holidayMap)) return false
       if (m.start_date && dayFmt < m.start_date) return false
+      if (hasLeft(m, dayFmt)) return false
       const cached = cache[entryKey(m.id, day)]
       if (cached && (cached.status === 'leave' || cached.status === 'other')) return false
       if (!cached) {
