@@ -52,6 +52,8 @@ export interface Group {
   id: string
   name: string
   color: string
+  /** Display position on the Schedule, its export and Settings */
+  sort_order: number
 }
 
 export interface Staff {
@@ -65,6 +67,8 @@ export interface Staff {
   pattern: Record<string, Status | null> | null
   created_at: string
   start_date: string // YYYY-MM-DD
+  /** Display position; staff are listed by group order, then this */
+  sort_order: number
 }
 
 export interface ScheduleEntry {
@@ -79,6 +83,8 @@ export interface WeekPlan {
   id: string
   week_start: string // YYYY-MM-DD (Sunday)
   is_published: boolean
+  /** Seat count snapshotted when the week was published; null while draft */
+  seats: number | null
 }
 
 export interface RotationDebt {

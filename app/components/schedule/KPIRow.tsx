@@ -6,7 +6,10 @@ import { getScheduleStatus, todayDate, fmt, entryKey } from '@/lib/schedule'
 interface Props {
   staff: Staff[]
   workDays: Date[]
+  /** Current seats setting, shown as "Available seats" */
   seats: number
+  /** Seat count for a given day (published weeks keep their own snapshot) */
+  seatsFor: (day: Date) => number
   cache: EntryCache
   holidayMap: Record<string, string>
 }
@@ -30,28 +33,29 @@ function KPICard({ label, accent, children }: KPICardProps) {
   )
 }
 
-export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
+export function KPIRow({ staff, workDays, seats, seatsFor, cache, holidayMap }: Props) {
   const today = todayDate()
+  const todaySeats = seatsFor(today)
 
   const todayIsHoliday = !!holidayMap[fmt(today)]
   const todayOffice = todayIsHoliday ? 0 : staff.filter(m => cache[entryKey(m.id, today)]?.status === 'office').length
-  const todayPct = seats > 0 ? Math.min(100, Math.round(todayOffice / seats * 100)) : 0
+  const todayPct = todaySeats > 0 ? Math.min(100, Math.round(todayOffice / todaySeats * 100)) : 0
 
   const todayBarColor =
-    todayOffice > seats   ? '#ef4444' :
-    todayOffice >= seats * 0.8 ? '#F7941D' :
+    todayOffice > todaySeats   ? '#ef4444' :
+    todayOffice >= todaySeats * 0.8 ? '#F7941D' :
     'var(--green)'
 
   const todayTextColor =
-    todayOffice > seats   ? 'text-red-600 dark:text-red-400' :
-    todayOffice >= seats * 0.8 ? 'text-[var(--amber)]' :
+    todayOffice > todaySeats   ? 'text-red-600 dark:text-red-400' :
+    todayOffice >= todaySeats * 0.8 ? 'text-[var(--amber)]' :
     'text-[var(--green)]'
 
   let totalOffice = 0, totalRemote = 0, totalLeave = 0, totalOther = 0
-  let nonHolidayDays = 0
+  let totalSeats = 0
   workDays.forEach(d => {
     if (holidayMap[fmt(d)]) return
-    nonHolidayDays++
+    totalSeats += seatsFor(d)
     staff.forEach(m => {
       const st = getScheduleStatus(m, d, cache)
       if (st === 'office') totalOffice++
@@ -61,8 +65,7 @@ export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
     })
   })
 
-  const avgDaily = nonHolidayDays > 0 ? totalOffice / nonHolidayDays : 0
-  const utilPct = seats > 0 ? Math.round(avgDaily / seats * 100) : 0
+  const utilPct = totalSeats > 0 ? Math.round(totalOffice / totalSeats * 100) : 0
 
   const utilColor =
     utilPct > 100 ? '#ef4444' :
@@ -77,7 +80,7 @@ export function KPIRow({ staff, workDays, seats, cache, holidayMap }: Props) {
 
       <KPICard label="Today in office" accent="var(--green)">
         <span className={cn('text-2xl font-semibold', todayTextColor)}>
-          {todayOffice} / {seats}
+          {todayOffice} / {todaySeats}
         </span>
         <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700/50 rounded-full overflow-hidden mt-1">
           <div

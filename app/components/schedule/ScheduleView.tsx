@@ -10,7 +10,7 @@ import type { Status } from '@/types/database'
 import {
   buildEntryCache, getScheduleStatus, isLocked, nextCycleStatus,
   fmt, weekStart, getWorkDays, periodLabel, computeReshuffle,
-  todayDate, entryKey,
+  todayDate, entryKey, orderStaffByGroup,
 } from '@/lib/schedule'
 import type { EntryCache } from '@/lib/schedule'
 import type { SyncState } from './SyncBadge'
@@ -23,7 +23,7 @@ interface Props {
   staff: Staff[]
   groups: Group[]
   seats: number
-  weekPlans: Record<string, { status: string }>
+  weekPlans: Record<string, { status: string; seats: number | null }>
   holidayMap: Record<string, string>
   role: Role
 }
@@ -53,6 +53,11 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
   const supabase = createClient()
 
   const workDays = getWorkDays(view, navDate)
+  // Same order for the table and its export: by group, then each person's position within it
+  const orderedStaff = orderStaffByGroup(staff, groups)
+
+  // Published weeks keep the seat count they were published with; drafts use the current setting
+  const seatsFor = (day: Date) => weekPlans[fmt(weekStart(day))]?.seats ?? initialSeats
 
   function setSync(state: SyncState, msg: string) {
     setSyncState({ state, msg })
@@ -112,7 +117,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
         .update({ status: 'draft', published_by: null, published_at: null })
         .eq('week_start', weekKey)
       if (error) { setSync('error', 'Failed: ' + error.message); return }
-      setWeekPlans(p => ({ ...p, [weekKey]: { status: 'draft' } }))
+      setWeekPlans(p => ({ ...p, [weekKey]: { status: 'draft', seats: null } }))
       setSync('ok', 'Week unpublished — schedule is editable again')
     } else {
       if (!confirm('Publish this week?\n\nThe schedule will be locked. You can unpublish it later if needed.')) return
@@ -121,7 +126,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
       const { error } = await supabase.from('week_plans')
         .upsert({ week_start: weekKey, status: 'published', published_by: user?.id, published_at: new Date().toISOString() }, { onConflict: 'week_start' })
       if (error) { setSync('error', 'Failed: ' + error.message); return }
-      setWeekPlans(p => ({ ...p, [weekKey]: { status: 'published' } }))
+      setWeekPlans(p => ({ ...p, [weekKey]: { status: 'published', seats: initialSeats } }))
       setSync('ok', 'Week published 🔒')
     }
   }
@@ -245,7 +250,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     const header = ['Staff', 'Office', 'Remote', ...days.map(d => FULL_DAY_NAMES[d.getDay()])]
     const aoa: unknown[][] = [header]
 
-    staff.forEach(m => {
+    orderedStaff.forEach(m => {
       const dayStatuses = days.map(d => {
         const dateStr = fmt(d)
         if (holidayMap[dateStr]) return 'holiday' as const
@@ -283,7 +288,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     }
 
     // Status cells
-    staff.forEach((m, i) => {
+    orderedStaff.forEach((m, i) => {
       const r = i + 1
       days.forEach((d, j) => {
         const dateStr = fmt(d)
@@ -302,7 +307,7 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
     })
 
     // Totals rows
-    const totalsStart = staff.length + 1
+    const totalsStart = orderedStaff.length + 1
     for (let r = totalsStart; r <= totalsStart + 1; r++) {
       for (let c = 0; c < header.length; c++) {
         const addr = XLSX.utils.encode_cell({ r, c })
@@ -403,17 +408,17 @@ export function ScheduleView({ staff, groups, seats: initialSeats, weekPlans: in
       <SyncBadge state={sync.state} message={sync.msg} />
 
       {/* KPIs */}
-      <KPIRow staff={staff} workDays={workDays} seats={initialSeats} cache={cache} holidayMap={holidayMap} />
+      <KPIRow staff={staff} workDays={workDays} seats={initialSeats} seatsFor={seatsFor} cache={cache} holidayMap={holidayMap} />
 
       {/* Heatmap */}
-      <Heatmap staff={staff} workDays={workDays} seats={initialSeats} cache={cache} holidayMap={holidayMap} />
+      <Heatmap staff={staff} workDays={workDays} seatsFor={seatsFor} cache={cache} holidayMap={holidayMap} />
 
       {/* Schedule table */}
       <ScheduleTable
-        staff={staff}
+        staff={orderedStaff}
         groups={groups}
         workDays={workDays}
-        seats={initialSeats}
+        seatsFor={seatsFor}
         cache={cache}
         holidayMap={holidayMap}
         collapsed={collapsed}

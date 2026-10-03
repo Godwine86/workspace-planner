@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal, Field, Input, Select, Btn } from './Modal'
-import { fmt } from '@/lib/schedule'
+import { fmt, orderStaffByGroup } from '@/lib/schedule'
 import type { Staff, Group, Status } from '@/types/database'
 
 const WORK_DOW = [0, 1, 2, 3, 4]
@@ -47,6 +47,7 @@ export function StaffSection({ staff, groups, onChange }: Props) {
   const [form, setForm] = useState<StaffForm>(defaultForm(groups))
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [reordering, setReordering] = useState(false)
   const supabase = createClient()
 
   function openAdd() { setForm(defaultForm(groups)); setError(''); setModal('add') }
@@ -77,7 +78,8 @@ export function StaffSection({ staff, groups, onChange }: Props) {
     }
 
     if (modal === 'add') {
-      const { data, error: err } = await supabase.from('staff').insert({ ...payload, sort_order: staff.length + 1 }).select().single()
+      const nextOrder = Math.max(0, ...staff.map(s => s.sort_order ?? 0)) + 1
+      const { data, error: err } = await supabase.from('staff').insert({ ...payload, sort_order: nextOrder }).select().single()
       if (err) { setError(err.message); setSaving(false); return }
       await supabase.from('rotation_debt').insert({ staff_id: (data as Staff).id, debt: 0 })
       onChange([...staff, data as Staff])
@@ -97,13 +99,36 @@ export function StaffSection({ staff, groups, onChange }: Props) {
     onChange(staff.filter(s => s.id !== m.id))
   }
 
+  const ordered = orderStaffByGroup(staff, groups)
+
+  // Move a member one place up/down within their group. Everyone is then renumbered
+  // 1..n in display order so sort_order stays unique, and only changed rows are saved.
+  async function move(m: Staff, dir: -1 | 1) {
+    const list = [...ordered]
+    const i = list.findIndex(s => s.id === m.id)
+    const j = i + dir
+    if (j < 0 || j >= list.length || list[j].group_id !== m.group_id) return
+    ;[list[i], list[j]] = [list[j], list[i]]
+    const renumbered = list.map((s, k) => ({ ...s, sort_order: k + 1 }))
+    const changed = renumbered.filter(s => staff.find(o => o.id === s.id)?.sort_order !== s.sort_order)
+
+    setReordering(true)
+    const results = await Promise.all(changed.map(s =>
+      supabase.from('staff').update({ sort_order: s.sort_order }).eq('id', s.id)
+    ))
+    setReordering(false)
+    const failed = results.find(r => r.error)
+    if (failed?.error) { alert('Could not save the new order: ' + failed.error.message); return }
+    onChange(renumbered)
+  }
+
   const isAdd = modal === 'add'
   const title = isAdd ? 'Add team member' : modal ? `Edit: ${(modal as Staff).name}` : ''
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Team members</h2>
-      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Manage staff, their groups, and weekly office/remote targets.</p>
+      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Manage staff, their groups, and weekly office/remote targets. Use ↑ ↓ to set the order names appear in on the Schedule and its export.</p>
       <div className="mb-4">
         <Btn variant="primary" onClick={openAdd}>+ Add staff member</Btn>
       </div>
@@ -112,18 +137,24 @@ export function StaffSection({ staff, groups, onChange }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-              {['Name', 'Role', 'Group', 'Office tgt/wk', 'Remote tgt/wk', ''].map(h => (
+              {['Order', 'Name', 'Role', 'Group', 'Office tgt/wk', 'Remote tgt/wk', ''].map(h => (
                 <th key={h} className="px-4 py-2.5 text-left text-[11px] font-medium text-gray-500 uppercase tracking-wide">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {!staff.length ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400">No staff yet.</td></tr>
-            ) : staff.map(m => {
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-400">No staff yet.</td></tr>
+            ) : ordered.map((m, i) => {
               const g = groups.find(g => g.id === m.group_id)
+              const canUp   = i > 0 && ordered[i - 1].group_id === m.group_id
+              const canDown = i < ordered.length - 1 && ordered[i + 1].group_id === m.group_id
               return (
                 <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                  <td className="px-2 py-2.5 whitespace-nowrap">
+                    <button onClick={() => move(m, -1)} disabled={!canUp || reordering} title="Move up within group" aria-label={`Move ${m.name} up`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed mr-1 transition-colors">↑</button>
+                    <button onClick={() => move(m, 1)} disabled={!canDown || reordering} title="Move down within group" aria-label={`Move ${m.name} down`} className="text-xs w-6 h-6 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">↓</button>
+                  </td>
                   <td className="px-4 py-2.5 font-medium text-gray-900 dark:text-gray-100">{m.name}</td>
                   <td className="px-4 py-2.5 text-gray-400 text-[12px]">{m.role ?? '—'}</td>
                   <td className="px-4 py-2.5">
