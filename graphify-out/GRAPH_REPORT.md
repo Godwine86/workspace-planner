@@ -1,5 +1,5 @@
 # Codebase Structure Map
-Generated on: Sat Oct  3 16:49:52 UTC 2026
+Generated on: Sat Oct  3 18:17:28 UTC 2026
 
 ## File Tree
 ```text
@@ -24,14 +24,19 @@ Generated on: Sat Oct  3 16:49:52 UTC 2026
 ./app/components/settings/SettingsView.tsx
 ./app/components/settings/Modal.tsx
 ./app/components/settings/HolidaysSection.tsx
+./app/components/ui
+./app/components/ui/Gauge.tsx
+./app/components/ui/RowMenu.tsx
+./app/components/ui/StatusChip.tsx
 ./app/components/history
 ./app/components/history/HistoryView.tsx
+./app/components/CommandPalette.tsx
 ./app/components/schedule
 ./app/components/schedule/ScheduleTable.tsx
 ./app/components/schedule/ScheduleView.tsx
 ./app/components/schedule/SyncBadge.tsx
 ./app/components/schedule/KPIRow.tsx
-./app/components/schedule/Heatmap.tsx
+./app/components/schedule/ScheduleDayList.tsx
 ./app/components/TopNav.tsx
 ./app/components/UserMenu.tsx
 ./app/lib
